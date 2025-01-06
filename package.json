@@ -1,5 +1,5 @@
 {
-  "name": "chat-genius",
+  "name": "slackr",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -21,8 +21,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@planetscale/database": "^1.19.0",
-    "@prisma/adapter-planetscale": "^5.14.0",
     "@prisma/client": "^5.14.0",
     "@t3-oss/env-nextjs": "^0.10.1",
     "@tanstack/react-query": "^5.50.0",
