@@ -19,3 +19,59 @@ model Post {
 
     @@index([name])
 }
+
+model Workspace {
+    id          String            @id @default(cuid())
+    name        String
+    slug        String            @unique
+    imageUrl    String?
+    createdAt   DateTime          @default(now())
+    members     WorkspaceMember[]
+    channels    Channel[]
+}
+
+model WorkspaceMember {
+    id          String    @id @default(cuid())
+    userId      String    // This will store Clerk user ID
+    workspaceId String
+    role        String    @default("member") // can be owner, admin, member
+    joinedAt    DateTime  @default(now())
+    workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+    @@unique([userId, workspaceId])
+}
+
+model Channel {
+    id          String          @id @default(cuid())
+    name        String
+    description String?
+    createdAt   DateTime        @default(now())
+    workspaceId String
+    isPrivate   Boolean         @default(false)
+    workspace   Workspace       @relation(fields: [workspaceId], references: [id])
+    members     ChannelMember[]
+    messages    Message[]
+
+    @@unique([name, workspaceId])
+}
+
+model ChannelMember {
+    id        String   @id @default(cuid())
+    userId    String   // This will store Clerk user ID
+    channelId String
+    joinedAt  DateTime @default(now())
+    channel   Channel  @relation(fields: [channelId], references: [id])
+
+    @@unique([userId, channelId])
+}
+
+model Message {
+    id          String    @id @default(cuid())
+    content     String    @db.Text
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+    userId      String    // This will store Clerk user ID
+    channelId   String
+    parentId    String?   // For thread replies
+    channel     Channel   @relation(fields: [channelId], references: [id])
+}
