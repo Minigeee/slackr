@@ -30,6 +30,10 @@ const MessageInput = ({ onSend }: MessageInputProps) => {
       },
       handleKeyDown: (view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
+          // Check if cursor is in a list - if so, allow default behavior
+          if (editor?.isActive('bulletList') || editor?.isActive('orderedList')) {
+            return false;
+          }
           event.preventDefault();
           handleSend();
           return true;

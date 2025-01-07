@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import calendar from 'dayjs/plugin/calendar';
 import { User } from '@/types/user';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 dayjs.extend(calendar);
 
@@ -54,6 +54,7 @@ const Message = ({ message }: MessageProps) => {
     </div>
   );
 };
+const MemoMessage = memo(Message);
 
 interface MessageListProps {
   messages: MessageWithUser[];
@@ -63,7 +64,7 @@ const MessageList = ({ messages }: MessageListProps) => {
   return (
     <div className='flex flex-col-reverse gap-4 overflow-y-auto p-4'>
       {messages.map((message) => (
-        <Message key={message.id} message={message} />
+        <MemoMessage key={message.id} message={message} />
       ))}
     </div>
   );
