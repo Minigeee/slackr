@@ -104,27 +104,27 @@ export const workspaceRouter = createTRPCRouter({
       return true;
     }),
 
-  inviteMember: protectedProcedure
+  addMember: protectedProcedure
     .input(z.object({
       workspaceId: z.string(),
-      email: z.string().email(),
+      userId: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const member = await ctx.db.workspaceMember.findFirst({
-        where: {
-          workspaceId: input.workspaceId,
-          userId: ctx.auth.userId,
-          role: { in: ["owner", "admin"] },
-        },
-      });
-
-      if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+      try {
+        return await ctx.db.workspaceMember.create({
+          data: {
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            role: "member",
+          },
+        });
+      } catch (error: any) {
+        // Ignore unique constraint violation error
+        if (error.code === 'P2002') {
+          return null;
+        }
+        throw error;
       }
-
-      // Note: You'll need to implement your own email invitation system
-      // This is just a placeholder
-      return { success: true };
     }),
 
   removeMember: protectedProcedure

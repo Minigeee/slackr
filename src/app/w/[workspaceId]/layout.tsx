@@ -13,7 +13,7 @@ async function getWorkspaceData(workspaceId: string, userId: string) {
     },
   });
 
-  const workspaceMembers = workspace
+  const members = workspace
     ? await clerkClient()
         .then((client) =>
           client.users.getUserList({
@@ -56,7 +56,7 @@ async function getWorkspaceData(workspaceId: string, userId: string) {
 
   return {
     workspace,
-    workspaceMembers,
+    members,
     joinedChannels: memberChannels,
     unjoinedChannels,
   };
@@ -71,7 +71,7 @@ export default async function Layout({
 }) {
   const user = await currentUser();
   const { workspaceId } = await params;
-  const { workspace, workspaceMembers, joinedChannels, unjoinedChannels } =
+  const { workspace, members, joinedChannels, unjoinedChannels } =
     await getWorkspaceData(workspaceId, user?.id ?? '');
 
   return (
@@ -82,7 +82,7 @@ export default async function Layout({
       <SignedIn>
         <WorkspaceProvider
           workspace={workspace}
-          workspaceMembers={workspaceMembers}
+          members={members}
           joinedChannels={joinedChannels}
           unjoinedChannels={unjoinedChannels}
         >

@@ -1,12 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
-import { observable } from "@trpc/server/observable";
-import { EventEmitter } from "events";
-import { Message } from "@prisma/client";
-
-// Create an event emitter for message events
-const ee = new EventEmitter();
+import { pusher, getChannelName, EVENTS } from "@/server/pusher";
+import { clerkClient } from "@clerk/nextjs/server";
+import { User } from "@/types/user";
 
 export const messageRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -99,6 +96,8 @@ export const messageRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      const client = await clerkClient();
+      const sender = await client.users.getUser(ctx.auth.userId);
       const message = await ctx.db.message.create({
         data: {
           content: input.content,
@@ -108,8 +107,22 @@ export const messageRouter = createTRPCRouter({
         },
       });
 
-      // Emit new message event
-      ee.emit("newMessage", message);
+      // Trigger Pusher event for new message
+      await pusher.trigger(
+        getChannelName(input.channelId),
+        EVENTS.NEW_MESSAGE,
+        {
+          ...message,
+          user: {
+            id: sender.id,
+            firstName: sender.firstName,
+            lastName: sender.lastName,
+            imageUrl: sender.imageUrl,
+            email: sender.emailAddresses[0]?.emailAddress,
+            profilePicture: sender.imageUrl,
+          } as User,
+        }
+      );
 
       return message;
     }),
@@ -138,8 +151,12 @@ export const messageRouter = createTRPCRouter({
         data: { content: input.content },
       });
 
-      // Emit update message event
-      ee.emit("updateMessage", updatedMessage);
+      // Trigger Pusher event for updated message
+      await pusher.trigger(
+        getChannelName(message.channelId),
+        EVENTS.UPDATE_MESSAGE,
+        updatedMessage
+      );
 
       return updatedMessage;
     }),
@@ -171,103 +188,13 @@ export const messageRouter = createTRPCRouter({
         where: { id: input.messageId },
       });
 
-      // Emit delete message event
-      ee.emit("deleteMessage", { messageId: input.messageId });
+      // Trigger Pusher event for deleted message
+      await pusher.trigger(
+        getChannelName(message.channelId),
+        EVENTS.DELETE_MESSAGE,
+        { messageId: input.messageId }
+      );
 
       return true;
-    }),
-
-  onNew: protectedProcedure
-    .input(z.object({ channelId: z.string() }))
-    .subscription(async ({ ctx, input }) => {
-      // Verify user has access to channel
-      const member = await ctx.db.channelMember.findUnique({
-        where: {
-          userId_channelId: {
-            userId: ctx.auth.userId,
-            channelId: input.channelId,
-          },
-        },
-      });
-
-      if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      return observable<Message>((emit) => {
-        const onNew = (message: Message) => {
-          if (message.channelId === input.channelId) {
-            emit.next(message);
-          }
-        };
-
-        ee.on("newMessage", onNew);
-
-        return () => {
-          ee.off("newMessage", onNew);
-        };
-      });
-    }),
-
-  onUpdate: protectedProcedure
-    .input(z.object({ channelId: z.string() }))
-    .subscription(async ({ ctx, input }) => {
-      // Verify user has access to channel
-      const member = await ctx.db.channelMember.findUnique({
-        where: {
-          userId_channelId: {
-            userId: ctx.auth.userId,
-            channelId: input.channelId,
-          },
-        },
-      });
-
-      if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      return observable<Message>((emit) => {
-        const onUpdate = (message: Message) => {
-          if (message.channelId === input.channelId) {
-            emit.next(message);
-          }
-        };
-
-        ee.on("updateMessage", onUpdate);
-
-        return () => {
-          ee.off("updateMessage", onUpdate);
-        };
-      });
-    }),
-
-  onDelete: protectedProcedure
-    .input(z.object({ channelId: z.string() }))
-    .subscription(async ({ ctx, input }) => {
-      // Verify user has access to channel
-      const member = await ctx.db.channelMember.findUnique({
-        where: {
-          userId_channelId: {
-            userId: ctx.auth.userId,
-            channelId: input.channelId,
-          },
-        },
-      });
-
-      if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      return observable<{ messageId: string }>((emit) => {
-        const onDelete = (data: { messageId: string }) => {
-          emit.next(data);
-        };
-
-        ee.on("deleteMessage", onDelete);
-
-        return () => {
-          ee.off("deleteMessage", onDelete);
-        };
-      });
     }),
 }); 

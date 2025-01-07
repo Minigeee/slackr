@@ -26,7 +26,7 @@ const MessageInput = ({ onSend }: MessageInputProps) => {
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm focus:outline-none px-4 py-3 overflow-hidden break-words w-full',
+          'prose prose-sm focus:outline-none px-4 py-3 overflow-hidden break-all break-words max-w-full whitespace-pre-wrap w-full',
       },
       handleKeyDown: (view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -105,7 +105,8 @@ const MessageInput = ({ onSend }: MessageInputProps) => {
           </Button>
       </div>
         <EditorContent 
-          editor={editor} 
+          editor={editor}
+          className='min-h-[3rem]'
         />
     </div>
   );

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '../ui/button';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EVENTS, subscribeToChannel } from '@/utils/pusher';
 
 interface MessageWithUser extends Message {
   user: User;
@@ -22,28 +23,28 @@ interface MessageViewProps {
   onSendMessage: (content: string) => Promise<Message>;
 }
 
-const MessageView = ({ messages, onSendMessage }: MessageViewProps) => {
-  const { workspaceMembers } = useWorkspace();
+const MessageView = (props: MessageViewProps) => {
+  const workspace = useWorkspace();
   const { user } = useClerk();
   const { toast } = useToast();
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(props.messages);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  const allMessages = [...optimisticMessages, ...messages];
-  
   const messagesWithUser = useMemo(() => {
-    return allMessages.map((message) => {
+    return messages.map((message) => {
       return {
         ...message,
-        user: workspaceMembers[message.userId],
+        user: workspace.members[message.userId],
       } as MessageWithUser;
     });
-  }, [allMessages, workspaceMembers]);
+  }, [messages, workspace.members]);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]',
+      );
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
@@ -52,7 +53,9 @@ const MessageView = ({ messages, onSendMessage }: MessageViewProps) => {
 
   const handleScroll = () => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]',
+      );
       if (scrollContainer) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
@@ -63,7 +66,9 @@ const MessageView = ({ messages, onSendMessage }: MessageViewProps) => {
 
   // Setup scroll event listener
   useEffect(() => {
-    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    const scrollContainer = scrollAreaRef.current?.querySelector(
+      '[data-radix-scroll-area-viewport]',
+    );
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', handleScroll);
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
@@ -89,40 +94,94 @@ const MessageView = ({ messages, onSendMessage }: MessageViewProps) => {
       parentId: null,
     };
 
-    setOptimisticMessages(prev => [optimisticMessage, ...prev]);
+    setMessages((prev) => [optimisticMessage, ...prev]);
 
     try {
-      await onSendMessage(content);
-      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      await props.onSendMessage(content);
+      setMessages((prev) =>
+        prev.filter((msg) => msg.id !== optimisticMessage.id),
+      );
     } catch (error) {
-      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      setMessages((prev) =>
+        prev.filter((msg) => msg.id !== optimisticMessage.id),
+      );
       toast({
-        title: "Error sending message",
-        description: "Your message could not be sent. Please try again.",
-        variant: "destructive",
+        title: 'Error sending message',
+        description: 'Your message could not be sent. Please try again.',
+        variant: 'destructive',
       });
     }
   };
 
+  useEffect(() => {
+    // Subscribe to Pusher channel
+    const channelId = messages[0]?.channelId;
+    if (!channelId) return;
+
+    const channel = subscribeToChannel(channelId);
+
+    // Handle new messages
+    channel.bind(EVENTS.NEW_MESSAGE, async (message: MessageWithUser) => {
+      // Check if we have the sender's info
+      const sender = workspace.members[message.user.id];
+      if (!sender) {
+        // Add sender to members
+        workspace._mutators.setMembers((prev) => ({
+          ...prev,
+          [message.user.id]: message.user,
+        }));
+      }
+
+      setMessages((prev) => {
+        const idx = prev.findIndex((msg) => msg.id === message.id);
+        if (idx >= 0) return prev;
+        return [message, ...prev];
+      });
+    });
+
+    // Handle message updates
+    channel.bind(EVENTS.UPDATE_MESSAGE, (updatedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === updatedMessage.id ? updatedMessage : msg,
+        ),
+      );
+    });
+
+    // Handle message deletions
+    channel.bind(
+      EVENTS.DELETE_MESSAGE,
+      ({ messageId }: { messageId: string }) => {
+        setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      },
+    );
+
+    // Cleanup on unmount
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, [messages]);
+
   return (
-    <div className="relative flex-1 flex flex-col h-full overflow-hidden">
+    <div className='relative flex h-full flex-1 flex-col overflow-hidden'>
       <ScrollArea ref={scrollAreaRef} className='flex-1'>
-        <div className="p-4">
+        <div className='p-4'>
           <MessageList messages={messagesWithUser} />
         </div>
       </ScrollArea>
       <Button
-        variant="secondary"
-        size="icon"
+        variant='secondary'
+        size='icon'
         className={cn(
-          'absolute bottom-40 right-4 rounded-full shadow-md transition-opacity z-10',
-          showScrollButton ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          'absolute bottom-40 right-4 z-10 rounded-full shadow-md transition-opacity',
+          showScrollButton ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={scrollToBottom}
       >
-        <ChevronDown className="h-4 w-4" />
+        <ChevronDown className='h-4 w-4' />
       </Button>
-      <div className='border-t p-4 bg-background'>
+      <div className='border-t bg-background p-4'>
         <MessageInput onSend={handleSendMessage} />
       </div>
     </div>

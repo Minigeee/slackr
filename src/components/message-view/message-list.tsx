@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 dayjs.extend(calendar);
 
 interface MessageWithUser extends Message {
-  user: User;
+  user: User | undefined;
 }
 
 interface MessageProps {
@@ -18,11 +18,11 @@ interface MessageProps {
 
 const Message = ({ message }: MessageProps) => {
   const name = useMemo(() => {
-    if (message.user.firstName && message.user.lastName) {
+    if (message.user?.firstName && message.user?.lastName) {
       return `${message.user.firstName} ${message.user.lastName}`;
     }
-    return message.user.email ?? 'Unknown User';
-  }, [message.user.firstName, message.user.lastName, message.user.email]);
+    return message.user?.email ?? 'Unknown User';
+  }, [message.user?.firstName, message.user?.lastName, message.user?.email]);
 
   const initials = useMemo(() => {
     return name.slice(0, 2).toUpperCase();
@@ -31,7 +31,7 @@ const Message = ({ message }: MessageProps) => {
   return (
     <div className='group flex gap-3 hover:bg-muted/50 px-3 py-2 rounded-lg'>
       <Avatar>
-        <AvatarImage src={message.user.profilePicture ?? undefined} />
+        <AvatarImage src={message.user?.profilePicture ?? undefined} />
         <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
       <div className='flex flex-col flex-1'>
