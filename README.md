@@ -1,29 +1,55 @@
-# Create T3 App
+# Slack Clone
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+*This is a demo project that is not meant to be used in production*
 
-## What's next? How do I make an app with this?
+A real-time communication platform built with the T3 stack (Next.js, tRPC, Prisma) that enables team collaboration through channels and messaging.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## Features
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+- 🔐 User authentication via Clerk
+- 💬 Real-time messaging
+- 📢 Public channels
+- 👥 Channel member management
+- 🔄 Online/offline status
+- ✍️ Typing indicators
+- ✅ Read receipts
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+## Tech Stack
 
-## Learn More
+- **Framework**: Next.js
+- **API**: tRPC
+- **Database**: PostgreSQL + Prisma
+- **Authentication**: Clerk
+- **Real-time**: Pusher
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Getting Started
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+4. Initialize the database:
+   ```bash
+   npx prisma db push
+   ```
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+## Environment Variables
 
-## How do I deploy this?
+Required environment variables:
+- `DATABASE_URL`: PostgreSQL connection string
+- `CLERK_SECRET_KEY`: Clerk authentication secret
+- `CLERK_PUBLISHABLE_KEY`: Clerk publishable key
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk frontend key
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+## License
+
+MIT
