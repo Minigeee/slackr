@@ -32,6 +32,9 @@ export const messageRouter = createTRPCRouter({
         take: input.limit + 1,
         cursor: input.cursor ? { id: input.cursor } : undefined,
         orderBy: { createdAt: "desc" },
+        include: {
+          attachments: true,
+        },
       });
 
       let nextCursor: string | undefined = undefined;
@@ -51,7 +54,10 @@ export const messageRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
-        include: { channel: true },
+        include: { 
+          channel: true,
+          attachments: true,
+        },
       });
 
       if (!message) {
@@ -81,6 +87,14 @@ export const messageRouter = createTRPCRouter({
       content: z.string(),
       parentId: z.string().optional(),
       threadId: z.string().optional(),
+      attachments: z.array(z.object({
+        key: z.string(),
+        filename: z.string(),
+        mimeType: z.string(),
+        size: z.number(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+      })),
     }))
     .mutation(async ({ ctx, input }) => {
       // Verify user has access to channel
@@ -97,8 +111,7 @@ export const messageRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const client = await clerkClient();
-      const sender = await client.users.getUser(ctx.auth.userId);
+      // Create message and attachments in a transaction
       const message = await ctx.db.message.create({
         data: {
           content: input.content,
@@ -106,8 +119,20 @@ export const messageRouter = createTRPCRouter({
           userId: ctx.auth.userId,
           parentId: input.parentId,
           threadId: input.threadId,
+          attachments: {
+            create: input.attachments.map(attachment => ({
+              ...attachment,
+              url: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${attachment.key}`,
+            })),
+          },
+        },
+        include: {
+          attachments: true,
         },
       });
+
+      const client = await clerkClient();
+      const sender = await client.users.getUser(ctx.auth.userId);
 
       // Trigger Pusher event for new message
       await pusher.trigger(
@@ -151,6 +176,9 @@ export const messageRouter = createTRPCRouter({
       const updatedMessage = await ctx.db.message.update({
         where: { id: input.messageId },
         data: { content: input.content },
+        include: {
+          attachments: true,
+        },
       });
 
       // Trigger Pusher event for updated message
@@ -168,7 +196,10 @@ export const messageRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
-        include: { channel: { include: { workspace: { include: { members: true } } } } },
+        include: { 
+          channel: { include: { workspace: { include: { members: true } } } },
+          attachments: true,
+        },
       });
 
       if (!message) {
@@ -185,6 +216,19 @@ export const messageRouter = createTRPCRouter({
       if (message.userId !== ctx.auth.userId && !isAdmin) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+
+      // Delete attachments from S3
+      await Promise.all(
+        message.attachments.map(async (attachment) => {
+          try {
+            await ctx.db.attachment.delete({
+              where: { id: attachment.id },
+            });
+          } catch (error) {
+            console.error(`Failed to delete attachment ${attachment.id}:`, error);
+          }
+        })
+      );
 
       await ctx.db.message.delete({
         where: { id: input.messageId },

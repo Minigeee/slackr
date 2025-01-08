@@ -16,6 +16,7 @@ interface MessageViewProps {
   messages: Message[];
   onSendMessage: (
     content: string,
+    attachments: File[],
     threadId?: string,
   ) => Promise<Message | null>;
   threadId?: string; // If provided, shows only messages in this thread
@@ -105,9 +106,9 @@ const MessageView = (props: MessageViewProps) => {
   }, [messagesWithUser.length]);
 
   const handleSendMessage = useCallback(
-    async (content: string, threadId?: string) => {
+    async (content: string, attachments: File[], threadId?: string) => {
       setReplyTo(undefined);
-      const message = await props.onSendMessage(content, threadId).catch(() => {
+      const message = await props.onSendMessage(content, attachments, threadId).catch(() => {
         // If the message fails to send, revert the reply
         setReplyTo(replyTo);
       });

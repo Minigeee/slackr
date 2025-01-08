@@ -12,14 +12,24 @@ import {
   ListOrdered,
   Send,
   X,
+  Paperclip,
+  Image as ImageIcon,
+  File,
 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { type MessageWithUser } from '@/types/message';
+import { cn } from '@/lib/utils';
+
+interface PendingAttachment {
+  id: string;
+  file: File;
+  previewUrl?: string;
+}
 
 interface MessageInputProps {
   /** Callback to send the message */
-  onSend: (content: string, threadId?: string) => void;
+  onSend: (content: string, attachments: File[], threadId?: string) => void;
   /** Thread id to send message in */
   threadId?: string;
   /** Message to reply to */
@@ -29,6 +39,8 @@ interface MessageInputProps {
 }
 
 const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInputProps) => {
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Strike],
@@ -54,11 +66,64 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
   });
   
   const handleSend = useCallback(() => {
-    if (editor?.isEmpty) return;
+    if (editor?.isEmpty && pendingAttachments.length === 0) return;
     const content = editor?.getHTML() ?? '';
-    onSend(content, threadId ?? replyTo?.id);
+    onSend(content, pendingAttachments.map(a => a.file), threadId ?? replyTo?.id);
     editor?.commands.clearContent();
-  }, [editor, onSend, replyTo, threadId]);
+    setPendingAttachments([]);
+  }, [editor, onSend, replyTo, threadId, pendingAttachments]);
+
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Limit to 10 files total
+    const remainingSlots = 10 - pendingAttachments.length;
+    const newFiles = files.slice(0, remainingSlots);
+
+    const newAttachments = newFiles.map(file => {
+      const attachment: PendingAttachment = {
+        id: Math.random().toString(36).substring(7),
+        file,
+      };
+
+      // Generate preview URL for images
+      if (file.type.startsWith('image/')) {
+        attachment.previewUrl = URL.createObjectURL(file);
+      }
+
+      return attachment;
+    });
+
+    setPendingAttachments(prev => [...prev, ...newAttachments]);
+    
+    // Reset input
+    event.target.value = '';
+  }, [pendingAttachments]);
+
+  const removeAttachment = useCallback((id: string) => {
+    setPendingAttachments(prev => {
+      const newAttachments = prev.filter(a => a.id !== id);
+      // Cleanup preview URLs
+      prev.forEach(a => {
+        if (a.id === id && a.previewUrl) {
+          URL.revokeObjectURL(a.previewUrl);
+        }
+      });
+      return newAttachments;
+    });
+  }, []);
+
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      pendingAttachments.forEach(a => {
+        if (a.previewUrl) {
+          URL.revokeObjectURL(a.previewUrl);
+        }
+      });
+    };
+  }, []);
 
   // Focus the editor when a reply is set
   useEffect(() => {
@@ -82,6 +147,41 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
           </Button>
         </div>
       )}
+
+      {pendingAttachments.length > 0 && (
+        <div className='flex gap-2 overflow-x-auto px-4 py-2'>
+          {pendingAttachments.map((attachment) => (
+            <div
+              key={attachment.id}
+              className='relative flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border bg-muted'
+            >
+              {attachment.previewUrl ? (
+                <img
+                  src={attachment.previewUrl}
+                  alt={attachment.file.name}
+                  className='h-full w-full rounded-lg object-cover'
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1" title={attachment.file.name}>
+                  <File className='h-8 w-8 text-muted-foreground' />
+                  <div className="text-xs text-muted-foreground truncate max-w-[72px] px-1">
+                    {attachment.file.name}
+                  </div>
+                </div>
+              )}
+              <Button
+                variant='secondary'
+                size='icon'
+                className='absolute -right-2 -top-2 h-6 w-6 rounded-full'
+                onClick={() => removeAttachment(attachment.id)}
+              >
+                <X className='h-3 w-3' />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className='rounded-lg border bg-white'>
         <div className='flex items-center gap-1 border-b px-1 py-1'>
           <Button
@@ -136,9 +236,35 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
             <ListOrdered className='h-4 w-4' />
           </Button>
 
+          <Separator orientation='vertical' className='h-8' />
+
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(pendingAttachments.length >= 10 && 'opacity-50')}
+            disabled={pendingAttachments.length >= 10}
+          >
+            <Paperclip className='h-4 w-4' />
+          </Button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+            disabled={pendingAttachments.length >= 10}
+          />
+
           <div className='flex-1' />
 
-          <Button onClick={handleSend} size='sm'>
+          <Button 
+            onClick={handleSend}
+            size='sm'
+            disabled={editor?.isEmpty && pendingAttachments.length === 0}
+          >
             <Send className='h-4 w-4' />
           </Button>
         </div>

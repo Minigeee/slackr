@@ -95,7 +95,23 @@ export default function WorkspaceSidebar() {
   }, [members]);
 
   if (!workspace || !user) {
-    return null;
+    return (
+      <div className='flex h-full w-64 flex-col border-r bg-background'>
+        <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
+          <div className='h-4 w-32 animate-pulse rounded bg-muted'></div>
+        </div>
+        <div className='p-4 space-y-4'>
+          <div className='space-y-2'>
+            <div className='h-4 w-20 animate-pulse rounded bg-muted'></div>
+            <div className='space-y-2'>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className='h-8 w-full animate-pulse rounded bg-muted'></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleCreateChannel = async (data: {

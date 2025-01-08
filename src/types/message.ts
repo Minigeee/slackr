@@ -1,11 +1,15 @@
-import { type Message } from '@prisma/client';
-import { type User } from '@/types/user';
+import { Message, Attachment } from "@prisma/client";
+import { User } from "./user";
 
-export interface MessageWithUser extends Message {
-  user: User | undefined;
-}
+export type MessageWithUser = Message & {
+  user?: User;
+};
 
-/** Message with replies and user info */
-export interface FullMessage extends MessageWithUser {
-  replies: MessageWithUser[];
-}
+export type AttachmentWithStatus = Attachment & {
+  isUploading?: boolean;
+};
+
+export type FullMessage = MessageWithUser & {
+  replies?: Message[];
+  attachments?: AttachmentWithStatus[];
+};

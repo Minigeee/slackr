@@ -80,4 +80,21 @@ model Message {
     thread      Message?  @relation("ThreadMessages", fields: [threadId], references: [id])
     replies     Message[] @relation("ThreadMessages")
     channel     Channel   @relation(fields: [channelId], references: [id])
+    attachments Attachment[]
+}
+
+model Attachment {
+    id          String   @id @default(cuid())
+    url         String   // S3 bucket URL
+    key         String   // S3 object key
+    filename    String   // Original file name
+    mimeType    String   // File MIME type
+    size        Int      // File size in bytes
+    width       Int?     // Image width if applicable
+    height      Int?     // Image height if applicable
+    createdAt   DateTime @default(now())
+    messageId   String
+    message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+    @@index([messageId])
 }

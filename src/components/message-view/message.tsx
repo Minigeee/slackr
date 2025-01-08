@@ -30,6 +30,10 @@ import {
   Trash2,
   MessageSquare,
   ReplyIcon,
+  Download,
+  ExternalLink,
+  FileIcon,
+  ImageIcon,
 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useUser } from '@clerk/nextjs';
@@ -42,7 +46,7 @@ import {
   DefaultAlertDialogFooter,
 } from '../ui/alert-dialog';
 import { AsyncButton } from '../ui/async-button';
-import { FullMessage, MessageWithUser } from '@/types/message';
+import { AttachmentWithStatus, FullMessage, MessageWithUser } from '@/types/message';
 import { useChannel } from '@/contexts/channel-context';
 
 interface MessageEditorProps {
@@ -133,6 +137,95 @@ const MessageEditor = ({ content, onSave, onCancel }: MessageEditorProps) => {
           Cancel
         </Button>
       </div>
+    </div>
+  );
+};
+
+type AttachmentPreviewProps = Omit<AttachmentWithStatus, 'id' | 'createdAt' | 'messageId'>;
+
+const AttachmentPreview = ({ url, filename, mimeType, size, width, height, isUploading }: AttachmentPreviewProps) => {
+  const isImage = mimeType.startsWith('image/');
+  const formattedSize = useMemo(() => {
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    let sizeInBytes = size;
+    let sizeIndex = 0;
+    while (sizeInBytes >= 1024 && sizeIndex < sizes.length - 1) {
+      sizeInBytes /= 1024;
+      sizeIndex++;
+    }
+    return `${Math.round(sizeInBytes * 10) / 10} ${sizes[sizeIndex]}`;
+  }, [size]);
+
+  if (isImage) {
+    return (
+      <div className="group relative inline-block max-w-xs overflow-hidden rounded-lg border">
+        {url ? (
+          <>
+            <img
+              src={url}
+              alt={filename}
+              className="max-h-96 w-auto object-cover"
+              style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => window.open(url, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = filename;
+                  link.click();
+                }}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex aspect-square w-64 items-center justify-center bg-muted/50">
+            <div className="flex flex-col items-center gap-2">
+              <ImageIcon className="h-8 w-8 animate-pulse text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">Uploading image...</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-muted">
+        <FileIcon className={cn("h-5 w-5 text-muted-foreground", isUploading && "animate-pulse")} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium">{filename}</div>
+        <div className="text-xs text-muted-foreground">
+          {isUploading ? "Uploading..." : formattedSize}
+        </div>
+      </div>
+      {url && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+          }}
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 };
@@ -250,6 +343,22 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
                     )}
                     dangerouslySetInnerHTML={{ __html: message.content }}
                   />
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      {message.attachments.map((attachment) => (
+                        <AttachmentPreview
+                          key={attachment.id}
+                          url={attachment.url}
+                          filename={attachment.filename}
+                          mimeType={attachment.mimeType}
+                          size={attachment.size}
+                          width={attachment.width ?? null}
+                          height={attachment.height ?? null}
+                          isUploading={attachment.isUploading}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {threadInfo && (
                     <Button
                       variant='ghost'
@@ -328,4 +437,5 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
     </>
   );
 };
+
 export const Message = memo(MessageNoMemo);
