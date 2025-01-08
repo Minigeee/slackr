@@ -5,10 +5,6 @@ import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { api } from '@/trpc/server';
 
-interface MessageWithUser extends Message {
-  user: User;
-}
-
 const getChannel = cache(async (channelId: string): Promise<{ channel: Channel; messages: Message[] }> => {
   const channel = await api.channel.getById({
     channelId,

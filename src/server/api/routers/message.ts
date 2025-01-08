@@ -80,6 +80,7 @@ export const messageRouter = createTRPCRouter({
       channelId: z.string(),
       content: z.string(),
       parentId: z.string().optional(),
+      threadId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Verify user has access to channel
@@ -104,6 +105,7 @@ export const messageRouter = createTRPCRouter({
           channelId: input.channelId,
           userId: ctx.auth.userId,
           parentId: input.parentId,
+          threadId: input.threadId,
         },
       });
 

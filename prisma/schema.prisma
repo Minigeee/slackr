@@ -76,5 +76,8 @@ model Message {
     userId      String    // This will store Clerk user ID
     channelId   String
     parentId    String?   // For thread replies
+    threadId    String?   // ID of the original message that started the thread
+    thread      Message?  @relation("ThreadMessages", fields: [threadId], references: [id])
+    replies     Message[] @relation("ThreadMessages")
     channel     Channel   @relation(fields: [channelId], references: [id])
 }
