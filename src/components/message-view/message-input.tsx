@@ -15,11 +15,20 @@ import {
   Paperclip,
   Image as ImageIcon,
   File,
+  Smile,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { type MessageWithUser } from '@/types/message';
 import { cn } from '@/lib/utils';
+import { Emojis, getIsEmojiSuggesterOpen } from './emoji-extension';
+import { EmojiPicker } from '../emoji-picker';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { type EmojiData } from '@emoji-mart/data';
 
 interface PendingAttachment {
   id: string;
@@ -41,9 +50,10 @@ interface MessageInputProps {
 const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInputProps) => {
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, Strike],
+    extensions: [StarterKit, Underline, Strike, Emojis],
     content: '',
     editorProps: {
       attributes: {
@@ -52,6 +62,11 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
       },
       handleKeyDown: (view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
+          // Don't submit if emoji suggester is open
+          if (getIsEmojiSuggesterOpen()) {
+            return false;
+          }
+          
           // Check if cursor is in a list - if so, allow default behavior
           if (editor?.isActive('bulletList') || editor?.isActive('orderedList')) {
             return false;
@@ -72,6 +87,30 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
     editor?.commands.clearContent();
     setPendingAttachments([]);
   }, [editor, onSend, replyTo, threadId, pendingAttachments]);
+
+  const handleEmojiSelect = useCallback((emoji: EmojiData) => {
+    if (!editor) return;
+    
+    // Insert emoji at current cursor position
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        {
+          type: 'emojis',
+          attrs: {
+            'emoji-id': emoji.id,
+          },
+        },
+        {
+          type: 'text',
+          text: ' ',
+        },
+      ])
+      .run();
+
+    setIsEmojiPickerOpen(false);
+  }, [editor]);
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -237,6 +276,25 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
           </Button>
 
           <Separator orientation='vertical' className='h-8' />
+
+          <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant='ghost'
+                size='sm'
+                className={isEmojiPickerOpen ? 'bg-muted' : ''}
+              >
+                <Smile className='h-4 w-4' />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="start"
+              className="w-full p-0"
+            >
+              <EmojiPicker onSelect={handleEmojiSelect} />
+            </PopoverContent>
+          </Popover>
 
           <Button
             variant='ghost'

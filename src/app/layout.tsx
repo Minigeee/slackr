@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 
 import { GeistSans } from 'geist/font/sans';
 import { type Metadata } from 'next';
+import { Noto_Color_Emoji } from 'next/font/google';
 
 import { TRPCReactProvider } from '@/trpc/react';
 import { ClerkProvider } from '@clerk/nextjs';
@@ -12,12 +13,20 @@ export const metadata: Metadata = {
   icons: [{ rel: 'icon', url: '/favicon.ico' }],
 };
 
+const emoji = Noto_Color_Emoji({
+  weight: '400',
+  display: 'swap',
+  subsets: ['emoji'],
+  preload: true,
+  variable: '--font-emoji',
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang='en' className={`${GeistSans.variable}`}>
+      <html lang='en' className={`${GeistSans.variable} ${emoji.variable} font-sans antialiased`}>
         <body>
           <TRPCReactProvider>{children}</TRPCReactProvider>
         </body>
