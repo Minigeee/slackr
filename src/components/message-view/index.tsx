@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { FullMessage, MessageWithUser } from '@/types/message';
 
 interface MessageViewProps {
-  messages: Message[];
+  messages: FullMessage[];
   onSendMessage: (
     content: string,
     attachments: File[],
@@ -24,46 +24,19 @@ interface MessageViewProps {
 
 /** Displays a list of messages and allows for sending new messages. Does not handle backend logic. */
 const MessageView = (props: MessageViewProps) => {
-  const workspace = useWorkspace();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [replyTo, setReplyTo] = useState<MessageWithUser | undefined>();
 
-  // Map messages to include user info and filter based on thread mode
-  const messagesWithUser = useMemo<FullMessage[]>(() => {
-    const withUser = props.messages.map((message) => {
-      return {
-        ...message,
-        user: workspace.members[message.userId],
-      } as MessageWithUser;
-    });
-
-    const threads = new Map<string, Message[]>();
-    withUser.forEach((message) => {
-      if (message.threadId) {
-        const thread = threads.get(message.threadId) || [];
-        thread.push(message);
-        threads.set(message.threadId, thread);
-      }
-    });
-
-    return withUser.map((message) => {
-      return {
-        ...message,
-        replies: threads.get(message.id),
-      } as FullMessage;
-    });
-  }, [props.messages, workspace.members]);
-
   // In thread view, show only messages in the thread
   const filteredMessages = useMemo(() => {
-    return messagesWithUser.filter((msg) => {
+    return props.messages.filter((msg) => {
       if (props.threadId) {
         return msg.threadId === props.threadId;
       }
       return !msg.threadId;
     });
-  }, [messagesWithUser, props.threadId]);
+  }, [props.messages, props.threadId]);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -103,7 +76,7 @@ const MessageView = (props: MessageViewProps) => {
   // Scroll to bottom on initial load and when messages change
   useEffect(() => {
     scrollToBottom();
-  }, [messagesWithUser.length]);
+  }, [props.messages.length]);
 
   const handleSendMessage = useCallback(
     async (content: string, attachments: File[], threadId?: string) => {

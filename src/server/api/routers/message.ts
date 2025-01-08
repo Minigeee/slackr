@@ -34,6 +34,7 @@ export const messageRouter = createTRPCRouter({
         orderBy: { createdAt: "desc" },
         include: {
           attachments: true,
+          reactions: true,
         },
       });
 
@@ -57,6 +58,7 @@ export const messageRouter = createTRPCRouter({
         include: { 
           channel: true,
           attachments: true,
+          reactions: true,
         },
       });
 
@@ -242,5 +244,99 @@ export const messageRouter = createTRPCRouter({
       );
 
       return true;
+    }),
+
+  toggleReaction: protectedProcedure
+    .input(z.object({
+      messageId: z.string(),
+      emoji: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const message = await ctx.db.message.findUnique({
+        where: { id: input.messageId },
+        include: { channel: true },
+      });
+
+      if (!message) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Verify user has access to channel
+      const member = await ctx.db.channelMember.findUnique({
+        where: {
+          userId_channelId: {
+            userId: ctx.auth.userId,
+            channelId: message.channelId,
+          },
+        },
+      });
+
+      if (!member) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Check if reaction already exists
+      const existingReaction = await ctx.db.messageReaction.findUnique({
+        where: {
+          userId_messageId_emoji: {
+            userId: ctx.auth.userId,
+            messageId: input.messageId,
+            emoji: input.emoji,
+          },
+        },
+      });
+
+      if (existingReaction) {
+        // Remove reaction
+        await ctx.db.messageReaction.delete({
+          where: { id: existingReaction.id },
+        });
+
+        // Trigger Pusher event for removed reaction
+        await pusher.trigger(
+          getChannelName(message.channelId),
+          EVENTS.REMOVE_REACTION,
+          {
+            messageId: input.messageId,
+            emoji: input.emoji,
+            userId: ctx.auth.userId,
+          }
+        );
+
+        return { added: false };
+      } else {
+        // Add reaction
+        const reaction = await ctx.db.messageReaction.create({
+          data: {
+            emoji: input.emoji,
+            userId: ctx.auth.userId,
+            messageId: input.messageId,
+          },
+        });
+
+        const client = await clerkClient();
+        const user = await client.users.getUser(ctx.auth.userId);
+
+        // Trigger Pusher event for new reaction
+        await pusher.trigger(
+          getChannelName(message.channelId),
+          EVENTS.ADD_REACTION,
+          {
+            messageId: input.messageId,
+            emoji: input.emoji,
+            userId: ctx.auth.userId,
+            user: {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              imageUrl: user.imageUrl,
+              email: user.emailAddresses[0]?.emailAddress,
+              profilePicture: user.imageUrl,
+            } as User,
+          }
+        );
+
+        return { added: true };
+      }
     }),
 }); 

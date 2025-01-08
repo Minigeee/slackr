@@ -15,6 +15,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { api } from '@/trpc/react';
@@ -34,6 +37,8 @@ import {
   ExternalLink,
   FileIcon,
   ImageIcon,
+  Smile,
+  Plus,
 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useUser } from '@clerk/nextjs';
@@ -48,6 +53,9 @@ import {
 import { AsyncButton } from '../ui/async-button';
 import { AttachmentWithStatus, FullMessage, MessageWithUser } from '@/types/message';
 import { useChannel } from '@/contexts/channel-context';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { EmojiPicker } from '../emoji-picker';
+import { Emoji } from '../emoji';
 
 interface MessageEditorProps {
   content: string;
@@ -207,7 +215,7 @@ const AttachmentPreview = ({ url, filename, mimeType, size, width, height, isUpl
         <FileIcon className={cn("h-5 w-5 text-muted-foreground", isUploading && "animate-pulse")} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{filename}</div>
+        <div className="truncate font-medium text-sm">{filename}</div>
         <div className="text-xs text-muted-foreground">
           {isUploading ? "Uploading..." : formattedSize}
         </div>
@@ -230,16 +238,40 @@ const AttachmentPreview = ({ url, filename, mimeType, size, width, height, isUpl
   );
 };
 
+interface ReactionButtonProps {
+  emoji: string;
+  count: number;
+  hasReacted: boolean;
+  onToggle: () => void;
+}
+
+const ReactionButton = ({ emoji, count, hasReacted, onToggle }: ReactionButtonProps) => {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onToggle}
+      className={cn(
+        'h-7 gap-1 rounded-full px-2 text-xs hover:bg-muted',
+        hasReacted && 'bg-secondary'
+      )}
+    >
+      <Emoji id={emoji} size="16px" />
+      <span>{count}</span>
+    </Button>
+  );
+};
+
 interface MessageProps {
   message: FullMessage;
   onReply?: (message: FullMessage) => void;
 }
 
 const MessageNoMemo = ({ message, onReply }: MessageProps) => {
-  const { setActiveThreadId } = useChannel();
-
+  const { setActiveThreadId, toggleReaction } = useChannel();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const { user } = useUser();
   const utils = api.useContext();
   const { mutateAsync: deleteMessage } = api.message.delete.useMutation({
@@ -310,6 +342,23 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
     };
   }, [message.replies]);
 
+  // Group reactions by emoji
+  const reactionGroups = useMemo(() => {
+    const groups = new Map<string, { count: number; userIds: string[] }>();
+    message.reactions?.forEach((reaction) => {
+      const existing = groups.get(reaction.emoji) || { count: 0, userIds: [] };
+      existing.count++;
+      existing.userIds.push(reaction.userId);
+      groups.set(reaction.emoji, existing);
+    });
+    return groups;
+  }, [message.reactions]);
+
+  const handleEmojiSelect = async (emoji: { id: string }) => {
+    setIsEmojiPickerOpen(false);
+    await toggleReaction(message.id, emoji.id);
+  };
+
   return (
     <>
       <ContextMenu>
@@ -359,6 +408,33 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
                       ))}
                     </div>
                   )}
+                  {reactionGroups.size > 0 && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {Array.from(reactionGroups.entries()).map(([emoji, { count, userIds }]) => (
+                        <ReactionButton
+                          key={emoji}
+                          emoji={emoji}
+                          count={count}
+                          hasReacted={userIds.includes(user?.id ?? '')}
+                          onToggle={() => toggleReaction(message.id, emoji)}
+                        />
+                      ))}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 rounded-full p-0"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start" side="top">
+                          <EmojiPicker onSelect={handleEmojiSelect} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
                   {threadInfo && (
                     <Button
                       variant='ghost'
@@ -378,7 +454,7 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
             </div>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className='w-40'>
+        <ContextMenuContent className='w-52'>
           <ContextMenuItem onSelect={handleCopy}>
             <Copy className='mr-2 h-4 w-4' />
             Copy
@@ -386,7 +462,7 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
           {message.replies?.length && (
             <ContextMenuItem onSelect={handleViewThread}>
               <MessageSquare className='mr-2 h-4 w-4' />
-              View Thread
+              View thread
             </ContextMenuItem>
           )}
           {!message.threadId && (
@@ -395,6 +471,15 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
               Reply
             </ContextMenuItem>
           )}
+          <ContextMenuSub open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
+            <ContextMenuSubTrigger>
+              <Smile className='mr-2 h-4 w-4' />
+              Add reaction
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="p-0">
+              <EmojiPicker onSelect={handleEmojiSelect} />
+            </ContextMenuSubContent>
+          </ContextMenuSub>
           {isAuthor && (
             <>
               <ContextMenuSeparator />

@@ -6,6 +6,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 interface ChannelContextType {
   activeThreadId: string | null;
   setActiveThreadId: (id: string | null) => void;
+  toggleReaction: (messageId: string, emoji: string) => Promise<void>;
 }
 
 const ChannelContext = createContext<ChannelContextType | null>(null);
@@ -22,18 +23,21 @@ interface ChannelProviderProps {
   children: ReactNode;
   activeThreadId: string | null;
   setActiveThreadId: (id: string | null) => void;
+  toggleReaction: (messageId: string, emoji: string) => Promise<void>;
 }
 
 export function ChannelProvider({
   children,
   activeThreadId,
   setActiveThreadId,
+  toggleReaction,
 }: ChannelProviderProps) {
   return (
     <ChannelContext.Provider
       value={{
         activeThreadId,
         setActiveThreadId,
+        toggleReaction,
       }}
     >
       {children}

@@ -14,6 +14,8 @@ export const EVENTS = {
   UPDATE_MESSAGE: 'update-message',
   DELETE_MESSAGE: 'delete-message',
   JOIN_CHANNEL: 'join-channel',
+  ADD_REACTION: 'add-reaction',
+  REMOVE_REACTION: 'remove-reaction',
 } as const;
 
 // Helper hook for subscribing to a channel

@@ -81,6 +81,19 @@ model Message {
     replies     Message[] @relation("ThreadMessages")
     channel     Channel   @relation(fields: [channelId], references: [id])
     attachments Attachment[]
+    reactions   MessageReaction[]
+}
+
+model MessageReaction {
+    id        String   @id @default(cuid())
+    emoji     String   // The emoji character or shortcode
+    userId    String   // This will store Clerk user ID
+    messageId String
+    createdAt DateTime @default(now())
+    message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, messageId, emoji])
+    @@index([messageId])
 }
 
 model Attachment {

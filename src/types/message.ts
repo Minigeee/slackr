@@ -1,4 +1,4 @@
-import { Message, Attachment } from "@prisma/client";
+import { Message, Attachment, MessageReaction } from "@prisma/client";
 import { User } from "./user";
 
 export type MessageWithUser = Message & {
@@ -12,4 +12,5 @@ export type AttachmentWithStatus = Attachment & {
 export type FullMessage = MessageWithUser & {
   replies?: Message[];
   attachments?: AttachmentWithStatus[];
+  reactions?: MessageReaction[];
 };

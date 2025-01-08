@@ -23,7 +23,7 @@ import { generateUploadPresignedUrl, getFileUrl } from '@/server/s3';
 
 interface ThreadViewProps {
   threadId: string;
-  messages: Message[];
+  messages: FullMessage[];
   onClose: () => void;
   onSendMessage: (
     content: string,
@@ -57,7 +57,7 @@ function ThreadView({
 
 interface ChannelViewProps {
   channel: Channel;
-  initialMessages: Message[];
+  initialMessages: Omit<FullMessage, 'user'>[];
 }
 
 export default function ChannelView({
@@ -69,12 +69,39 @@ export default function ChannelView({
   const workspace = useWorkspace();
 
   // Handle messages state locally bc they will be updated in real-time
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Omit<FullMessage, 'user'>[]>(initialMessages);
   const { mutateAsync: createMessage } = api.message.create.useMutation();
   const { mutateAsync: getUploadUrl } =
     api.attachment.getUploadUrl.useMutation();
+  const { mutateAsync: toggleReactionMutation } = api.message.toggleReaction.useMutation();
   // Handle active thread state
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+
+  // Map messages to include user info and filter based on thread mode
+  const messagesWithUser = useMemo<FullMessage[]>(() => {
+    const withUser = messages.map((message) => {
+      return {
+        ...message,
+        user: workspace.members[message.userId],
+      } as MessageWithUser;
+    });
+
+    const threads = new Map<string, Message[]>();
+    withUser.forEach((message) => {
+      if (message.threadId) {
+        const thread = threads.get(message.threadId) || [];
+        thread.push(message);
+        threads.set(message.threadId, thread);
+      }
+    });
+
+    return withUser.map((message) => {
+      return {
+        ...message,
+        replies: threads.get(message.id),
+      } as FullMessage;
+    });
+  }, [messages, workspace.members]);
 
   // Handle sending a message
   const handleSendMessage = useCallback(
@@ -191,6 +218,92 @@ export default function ChannelView({
     [createMessage, user?.id, channel.id, setMessages, toast, getUploadUrl],
   );
 
+  // Handle toggling reactions
+  const handleToggleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!user?.id) return;
+
+    // Optimistically update the reaction
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id === messageId) {
+          const existingReaction = msg.reactions?.find(
+            (r) => r.userId === user.id && r.emoji === emoji
+          );
+
+          if (existingReaction) {
+            // Remove reaction
+            return {
+              ...msg,
+              reactions: msg.reactions?.filter(
+                (r) => !(r.userId === user.id && r.emoji === emoji)
+              ),
+            };
+          } else {
+            // Add reaction
+            return {
+              ...msg,
+              reactions: [
+                ...(msg.reactions || []),
+                {
+                  id: `temp-${Date.now()}`,
+                  emoji,
+                  userId: user.id,
+                  messageId,
+                  createdAt: new Date(),
+                },
+              ],
+            };
+          }
+        }
+        return msg;
+      })
+    );
+
+    try {
+      await toggleReactionMutation({ messageId, emoji });
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+      // Revert optimistic update on error
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            const existingReaction = msg.reactions?.find(
+              (r) => r.userId === user.id && r.emoji === emoji
+            );
+
+            if (existingReaction) {
+              // Add reaction back
+              return {
+                ...msg,
+                reactions: [
+                  ...(msg.reactions?.filter(
+                    (r) => !(r.userId === user.id && r.emoji === emoji)
+                  ) || []),
+                  existingReaction,
+                ],
+              };
+            } else {
+              // Remove reaction
+              return {
+                ...msg,
+                reactions: msg.reactions?.filter(
+                  (r) => !(r.userId === user.id && r.emoji === emoji)
+                ),
+              };
+            }
+          }
+          return msg;
+        })
+      );
+
+      toast({
+        title: 'Error toggling reaction',
+        description: 'Your reaction could not be saved. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [user?.id, toggleReactionMutation, toast]);
+
   // Subscribe to real-time updates
   useEffect(() => {
     const channelId = channel.id;
@@ -250,6 +363,63 @@ export default function ChannelView({
       },
     );
 
+    // Handle reactions
+    pusherChannel.bind(
+      EVENTS.ADD_REACTION,
+      ({ messageId, emoji, userId, user }: { messageId: string; emoji: string; userId: string; user: User }) => {
+        // Ignore if the reaction is from the current user
+        if (userId === user?.id) return;
+
+        // Add sender to members if not already present
+        if (user && !workspace.members[user.id]) {
+          workspace._mutators.setMembers((prev) => ({
+            ...prev,
+            [user.id]: user,
+          }));
+        }
+
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                reactions: [
+                  ...(msg.reactions || []),
+                  {
+                    id: `${userId}-${emoji}`,
+                    emoji,
+                    userId,
+                    messageId,
+                    createdAt: new Date(),
+                  },
+                ],
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    );
+
+    pusherChannel.bind(
+      EVENTS.REMOVE_REACTION,
+      ({ messageId, emoji, userId }: { messageId: string; emoji: string; userId: string }) => {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                reactions: (msg.reactions || []).filter(
+                  (reaction) => !(reaction.userId === userId && reaction.emoji === emoji)
+                ),
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    );
+
     // Cleanup on unmount
     return () => {
       console.log('Cleanup: unsubscribing from channel:', channelId);
@@ -262,6 +432,7 @@ export default function ChannelView({
     <ChannelProvider
       activeThreadId={activeThreadId}
       setActiveThreadId={setActiveThreadId}
+      toggleReaction={handleToggleReaction}
     >
       <div className='flex h-full w-full'>
         <div className='flex h-full flex-1 flex-col'>
@@ -297,12 +468,12 @@ export default function ChannelView({
               <h2 className='font-semibold'>#{channel.name}</h2>
             )}
           </div>
-          <MessageView messages={messages} onSendMessage={handleSendMessage} />
+          <MessageView messages={messagesWithUser} onSendMessage={handleSendMessage} />
         </div>
         {activeThreadId && (
           <ThreadView
             threadId={activeThreadId}
-            messages={messages}
+            messages={messagesWithUser}
             onClose={() => setActiveThreadId(null)}
             onSendMessage={handleSendMessage}
           />
