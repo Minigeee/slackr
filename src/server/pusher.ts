@@ -17,4 +17,5 @@ export const EVENTS = {
   NEW_MESSAGE: 'new-message',
   UPDATE_MESSAGE: 'update-message',
   DELETE_MESSAGE: 'delete-message',
+  JOIN_CHANNEL: 'join-channel',
 } as const; 

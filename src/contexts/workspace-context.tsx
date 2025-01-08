@@ -23,6 +23,8 @@ interface WorkspaceContextType {
   refetchWorkspace: () => Promise<void>;
   _mutators: {
     setMembers: Dispatch<SetStateAction<Record<string, User>>>;
+    setJoinedChannels: Dispatch<SetStateAction<Channel[]>>;
+    setMemberStatus: (userId: string, status: 'online' | 'offline' | 'away') => void;
   };
 }
 
@@ -59,6 +61,7 @@ export function WorkspaceProvider({
                 userId: member.id,
                 workspaceId: workspaceId!,
                 role: 'member',
+                status: 'offline',
                 joinedAt: new Date(),
               })),
             }
@@ -85,7 +88,22 @@ export function WorkspaceProvider({
     });
     return map;
   }, [props.members]);
+
   const [members, setMembers] = useState<Record<string, User>>(initialMembers);
+  const [joinedChannels, setJoinedChannels] = useState<Channel[]>(initialJoinedChannels);
+
+  const setMemberStatus = useCallback((userId: string, status: 'online' | 'offline' | 'away') => {
+    setMembers((prev) => {
+      if (!prev[userId]) return prev;
+      return {
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          status,
+        },
+      };
+    });
+  }, []);
 
   const isLoading = !workspaceData || !channelsData;
 
@@ -93,7 +111,7 @@ export function WorkspaceProvider({
     <WorkspaceContext.Provider
       value={{
         workspace: workspaceData ?? null,
-        joinedChannels: channelsData?.joined ?? initialJoinedChannels,
+        joinedChannels: joinedChannels,
         unjoinedChannels: channelsData?.unjoined ?? initialUnjoinedChannels,
         members: members,
         isLoading,
@@ -102,6 +120,8 @@ export function WorkspaceProvider({
         }, [refetchWorkspace]),
         _mutators: {
           setMembers,
+          setJoinedChannels,
+          setMemberStatus,
         },
       }}
     >

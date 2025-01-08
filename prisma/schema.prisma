@@ -35,6 +35,7 @@ model WorkspaceMember {
     userId      String    // This will store Clerk user ID
     workspaceId String
     role        String    @default("member") // can be owner, admin, member
+    status      String    @default("offline") // can be online, offline, away
     joinedAt    DateTime  @default(now())
     workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
@@ -48,6 +49,7 @@ model Channel {
     createdAt   DateTime        @default(now())
     workspaceId String
     isPrivate   Boolean         @default(false)
+    type        String?         @default("channel") // can be channel or dm
     workspace   Workspace       @relation(fields: [workspaceId], references: [id])
     members     ChannelMember[]
     messages    Message[]
@@ -59,6 +61,7 @@ model ChannelMember {
     id        String   @id @default(cuid())
     userId    String   // This will store Clerk user ID
     channelId String
+    role      String   @default("member") // can be owner, member
     joinedAt  DateTime @default(now())
     channel   Channel  @relation(fields: [channelId], references: [id])
 

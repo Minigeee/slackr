@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { CreateChannelDialog } from './create-channel-dialog';
@@ -16,6 +16,53 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { useWorkspace } from '@/contexts/workspace-context';
 import type { Channel, Workspace } from '@prisma/client';
+import { api } from '@/trpc/react';
+import { pusherClient, EVENTS } from '@/utils/pusher';
+import { User } from '@/types/user';
+import { useMemo } from 'react';
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from './ui/context-menu';
+
+function MemberContextMenu({
+  member,
+  currentUserId,
+  onMessageClick,
+  children,
+}: {
+  member: User;
+  currentUserId: string;
+  onMessageClick: (member: User) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className='w-56'>
+        {member.id !== currentUserId && (
+          <ContextMenuItem onClick={() => onMessageClick(member)}>
+            <MessageSquare className='mr-2 h-4 w-4' />
+            Message
+          </ContextMenuItem>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+function UserAvatar({ user, className }: { user: User; className?: string }) {
+  return (
+    <Avatar className={className}>
+      <AvatarImage src={user.profilePicture} />
+      <AvatarFallback>
+        {user.firstName?.charAt(0) ?? user.email.charAt(0)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 export default function WorkspaceSidebar() {
   const { user } = useUser();
@@ -23,9 +70,31 @@ export default function WorkspaceSidebar() {
   const params = useParams();
   const channelId = params.channelId as string;
   const router = useRouter();
-  const { workspace, joinedChannels, unjoinedChannels } = useWorkspace();
+  const { workspace, joinedChannels, unjoinedChannels, members, _mutators } =
+    useWorkspace();
+  const utils = api.useContext();
+  const createDM = api.channel.createDM.useMutation({
+    onSuccess: (channel) => {
+      // Update local state if this is a new channel
+      const channelExists = joinedChannels.some((c) => c.id === channel.id);
+      if (!channelExists) {
+        const updatedJoinedChannels = [...joinedChannels, channel];
+        _mutators.setJoinedChannels(updatedJoinedChannels);
+      }
+    },
+  });
 
-  if (!workspace) {
+  // Sorted members
+  const sortedMembers = useMemo(() => {
+    const sorted = Object.values(members).sort(
+      (a, b) =>
+        a.firstName?.localeCompare(b.firstName ?? '') ||
+        a.email.localeCompare(b.email ?? ''),
+    );
+    return sorted;
+  }, [members]);
+
+  if (!workspace || !user) {
     return null;
   }
 
@@ -39,10 +108,23 @@ export default function WorkspaceSidebar() {
     console.log('Channel action completed:', data);
   };
 
+  const handleCreateDM = async (targetMember: User) => {
+    if (!user || !workspace) return;
+
+    // Use the new createDM endpoint
+    const channel = await createDM.mutateAsync({
+      workspaceId: workspace.id,
+      targetUserId: targetMember.id,
+    });
+
+    // Navigate to the channel
+    router.push(`/w/${workspace.id}/${channel.id}`);
+  };
+
   return (
     <div className='flex h-full w-64 flex-col border-r bg-background'>
       {/* Workspace Header */}
-      <div className='flex flex-shrink-0 h-12 items-center border-b px-4'>
+      <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
         <h2 className='font-semibold'>{workspace.name}</h2>
       </div>
 
@@ -66,16 +148,82 @@ export default function WorkspaceSidebar() {
           </div>
 
           <nav className='space-y-1'>
-            {joinedChannels.map((channel) => (
-              <Link
-                key={channel.id}
-                href={`/w/${workspace.id}/${channel.id}`}
-                className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
-                  channel.id === channelId ? 'bg-accent' : ''
-                }`}
+            {joinedChannels
+              .filter((channel) => channel.type !== 'dm')
+              .map((channel) => (
+                <Link
+                  key={channel.id}
+                  href={`/w/${workspace.id}/${channel.id}`}
+                  className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
+                    channel.id === channelId ? 'bg-accent' : ''
+                  }`}
+                >
+                  # {channel.name}
+                </Link>
+              ))}
+          </nav>
+        </div>
+
+        {/* DMs Section */}
+        <div className='space-y-1 p-4'>
+          <h3 className='text-sm font-semibold text-muted-foreground'>
+            Direct Messages
+          </h3>
+          <nav className='space-y-1'>
+            {joinedChannels
+              .filter((channel) => channel.type === 'dm')
+              .map((channel) => {
+                // Extract the other user's ID from the DM channel name
+                const [, user1, user2] = channel.name.split('-');
+                const otherUserId = user1 === user.id ? user2 : user1;
+                const otherUser = otherUserId ? members[otherUserId] : null;
+
+                if (!otherUser) return null;
+
+                return (
+                  <MemberContextMenu
+                    key={channel.id}
+                    member={otherUser}
+                    currentUserId={user.id}
+                    onMessageClick={handleCreateDM}
+                  >
+                    <Link
+                      href={`/w/${workspace.id}/${channel.id}`}
+                      className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
+                        channel.id === channelId ? 'bg-accent' : ''
+                      }`}
+                    >
+                      <UserAvatar user={otherUser} className='mr-2 h-5 w-5' />
+                      {otherUser.firstName
+                        ? `${otherUser.firstName} ${otherUser.lastName}`
+                        : otherUser.email}
+                    </Link>
+                  </MemberContextMenu>
+                );
+              })}
+          </nav>
+        </div>
+
+        {/* Members Section */}
+        <div className='space-y-1 p-4'>
+          <h3 className='text-sm font-semibold text-muted-foreground'>
+            Members
+          </h3>
+          <nav className='space-y-1'>
+            {sortedMembers.map((member) => (
+              <MemberContextMenu
+                key={member.id}
+                member={member}
+                currentUserId={user.id}
+                onMessageClick={handleCreateDM}
               >
-                # {channel.name}
-              </Link>
+                <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted'>
+                  <UserAvatar user={member} className='mr-2 h-5 w-5' />
+                  {member.firstName
+                    ? `${member.firstName} ${member.lastName}`
+                    : member.email}
+                </div>
+              </MemberContextMenu>
             ))}
           </nav>
         </div>
@@ -94,9 +242,9 @@ export default function WorkspaceSidebar() {
                 </AvatarFallback>
               </Avatar>
               <span className='text-sm font-medium'>
-                {user?.firstName
-                  ? `${user?.firstName} ${user?.lastName}`
-                  : user?.emailAddresses[0]?.emailAddress}
+                {user.firstName
+                  ? `${user.firstName} ${user.lastName}`
+                  : user.emailAddresses[0]?.emailAddress}
               </span>
             </Button>
           </DropdownMenuTrigger>

@@ -11,6 +11,7 @@ import { EVENTS, pusherClient } from '@/utils/pusher';
 import { subscribeToChannel, unsubscribeFromChannel } from '@/utils/pusher';
 import { User } from '@/types/user';
 import { useWorkspace } from '@/contexts/workspace-context';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface ChannelViewProps {
   channel: Channel;
@@ -137,7 +138,35 @@ export default function ChannelView({
   return (
     <div className='flex h-full w-full flex-col'>
       <div className='flex h-12 items-center border-b px-4'>
-        <h2 className='font-semibold'>#{channel.name}</h2>
+        {channel.type === 'dm' ? (
+          <>
+            {/* For DM channels, show the other user's info */}
+            {(() => {
+              const [, user1, user2] = channel.name.split('-');
+              const otherUserId = user1 === user?.id ? user2 : user1;
+              if (!otherUserId) return null;
+              const otherUser = workspace.members[otherUserId];
+
+              return (
+                <div className='flex items-center'>
+                  <Avatar className='mr-2 h-8 w-8'>
+                    <AvatarImage src={otherUser?.profilePicture} />
+                    <AvatarFallback>
+                      {otherUser?.firstName?.charAt(0) ?? otherUser?.email?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className='font-semibold'>
+                    {otherUser?.firstName
+                      ? `${otherUser.firstName} ${otherUser.lastName}`
+                      : otherUser?.email}
+                  </span>
+                </div>
+              );
+            })()}
+          </>
+        ) : (
+          <h2 className='font-semibold'>#{channel.name}</h2>
+        )}
       </div>
       <MessageView messages={messages} onSendMessage={handleSendMessage} />
     </div>

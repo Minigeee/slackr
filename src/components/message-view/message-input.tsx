@@ -13,6 +13,7 @@ import {
   Send,
 } from 'lucide-react';
 import { useCallback } from 'react';
+import { Separator } from '../ui/separator';
 
 interface MessageInputProps {
   onSend: (content: string) => void;
@@ -52,7 +53,7 @@ const MessageInput = ({ onSend }: MessageInputProps) => {
 
   return (
     <div className='rounded-lg border bg-white'>
-      <div className='flex gap-1 border-b px-1 py-1'>
+      <div className='flex items-center gap-1 border-b px-1 py-1'>
         <Button
           variant='ghost'
           size='sm'
@@ -85,6 +86,9 @@ const MessageInput = ({ onSend }: MessageInputProps) => {
         >
           <Strikethrough className='h-4 w-4' />
         </Button>
+
+        <Separator orientation='vertical' className='h-8' />
+
         <Button
           variant='ghost'
           size='sm'
