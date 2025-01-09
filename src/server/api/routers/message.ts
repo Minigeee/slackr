@@ -339,4 +339,109 @@ export const messageRouter = createTRPCRouter({
         return { added: true };
       }
     }),
+
+  getContext: protectedProcedure
+    .input(z.object({
+      messageId: z.string(),
+      limit: z.number().min(1).max(100).default(50),
+    }))
+    .query(async ({ ctx, input }) => {
+      // First get the target message to find its channel and timestamp
+      const targetMessage = await ctx.db.message.findUnique({
+        where: { id: input.messageId },
+        include: { channel: true },
+      });
+
+      if (!targetMessage) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Verify user has access to channel
+      const member = await ctx.db.channelMember.findUnique({
+        where: {
+          userId_channelId: {
+            userId: ctx.auth.userId,
+            channelId: targetMessage.channelId,
+          },
+        },
+      });
+
+      if (!member) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const halfLimit = Math.floor(input.limit / 2);
+
+      // Get messages based on whether the target is in a thread
+      const messages = await (async () => {
+        if (targetMessage.threadId || targetMessage.id === targetMessage.threadId) {
+          // Message is in a thread or is a thread parent, get thread messages
+          const threadId = targetMessage.threadId ?? targetMessage.id;
+          return await ctx.db.message.findMany({
+            where: {
+              OR: [
+                { id: threadId }, // Include the parent message
+                { threadId: threadId }, // Include all replies
+              ],
+            },
+            orderBy: { createdAt: 'asc' },
+          });
+        } else {
+          // Message is not in a thread, get messages around it
+          const beforeMessages = await ctx.db.message.findMany({
+            where: {
+              channelId: targetMessage.channelId,
+              threadId: null,
+              createdAt: {
+                lt: targetMessage.createdAt,
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: halfLimit,
+          });
+
+          const afterMessages = await ctx.db.message.findMany({
+            where: {
+              channelId: targetMessage.channelId,
+              threadId: null,
+              createdAt: {
+                gt: targetMessage.createdAt,
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+            take: halfLimit,
+          });
+
+          return [
+            ...beforeMessages.reverse(),
+            targetMessage,
+            ...afterMessages,
+          ];
+        }
+      })();
+
+      // Get user info for messages
+      const client = await clerkClient();
+      const userIds = [...new Set(messages.map((m) => m.userId))];
+      const users = await client.users.getUserList({ userId: userIds });
+      const usersMap = new Map(
+        users.data.map((user) => [
+          user.id,
+          {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            imageUrl: user.imageUrl,
+            email: user.emailAddresses[0]?.emailAddress,
+            profilePicture: user.imageUrl,
+          } as User,
+        ]),
+      );
+
+      // Format messages with user info
+      return messages.map((message) => ({
+        ...message,
+        user: usersMap.get(message.userId),
+      }));
+    }),
 }); 

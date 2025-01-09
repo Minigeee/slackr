@@ -1,7 +1,7 @@
 import { Search, X, Loader2 } from 'lucide-react';
 import { Input } from './input';
 import { useDebounce } from 'use-debounce';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, forwardRef } from 'react';
 import { Button } from './button';
 
 interface SearchBarProps {
@@ -10,15 +10,17 @@ interface SearchBarProps {
   placeholder?: string;
   debounceMs?: number;
   className?: string;
+  onFocus?: () => void;
 }
 
-export function SearchBar({
+export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(({
   value,
   onChange,
   placeholder = 'Search...',
   debounceMs = 300,
   className,
-}: SearchBarProps) {
+  onFocus,
+}, ref) => {
   const [localValue, setLocalValue] = useState(value);
   const [debouncedValue] = useDebounce(localValue, debounceMs, { leading: true });
   const isDebouncing = localValue !== debouncedValue;
@@ -29,8 +31,10 @@ export function SearchBar({
 
   return (
     <Input
+      ref={ref}
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
+      onFocus={onFocus}
       placeholder={placeholder}
       className={className}
       leftSection={<Search className="h-4 w-4" />}
@@ -52,4 +56,4 @@ export function SearchBar({
       }
     />
   );
-} 
+}); 

@@ -129,7 +129,6 @@ export function WorkspaceProvider({
     </WorkspaceContext.Provider>
   );
 }
-
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (context === undefined) {
@@ -137,3 +136,4 @@ export function useWorkspace() {
   }
   return context;
 }
+

@@ -2,6 +2,7 @@ import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { RedirectToSignIn, SignedIn, SignedOut } from '@clerk/nextjs';
 import { currentUser, clerkClient } from '@clerk/nextjs/server';
 import { WorkspaceProvider } from '@/contexts/workspace-context';
+import { SearchDropdown } from '@/components/search/search-dropdown';
 import { db } from '@/server/db';
 import { User } from '@/types/user';
 
@@ -20,13 +21,18 @@ async function getWorkspaceData(workspaceId: string, userId: string) {
             userId: workspace.members.map((member) => member.userId),
           }),
         )
-        .then((users) => users.data.map((user) => ({
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.emailAddresses[0]?.emailAddress ?? '',
-          profilePicture: user.imageUrl,
-        } as User)))
+        .then((users) =>
+          users.data.map(
+            (user) =>
+              ({
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.emailAddresses[0]?.emailAddress ?? '',
+                profilePicture: user.imageUrl,
+              }) as User,
+          ),
+        )
     : [];
 
   const memberChannels = await db.channel.findMany({
@@ -86,9 +92,17 @@ export default async function Layout({
           joinedChannels={joinedChannels}
           unjoinedChannels={unjoinedChannels}
         >
-          <div className='flex h-screen w-full'>
-            <WorkspaceSidebar />
-            <div className='flex-1'>{children}</div>
+          <div className='h-screen'>
+            <div className='h-[50px] border-b px-4 flex items-center gap-8'>
+              {/* <span className='text-purple-700 font-semibold text-3xl'>Slackr</span> */}
+              <div className='flex-1 flex justify-center'>
+                <SearchDropdown />
+              </div>
+            </div>
+            <div className='flex w-full h-[calc(100vh-50px)]'>
+              <WorkspaceSidebar />
+              <div className='flex-1'>{children}</div>
+            </div>
           </div>
         </WorkspaceProvider>
       </SignedIn>

@@ -82,6 +82,9 @@ model Message {
     channel     Channel   @relation(fields: [channelId], references: [id])
     attachments Attachment[]
     reactions   MessageReaction[]
+
+    @@index([content])
+    @@index([channelId, createdAt])
 }
 
 model MessageReaction {
