@@ -3,6 +3,7 @@ import PusherClient from "pusher-js";
 // Initialize Pusher client instance
 export const pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+  authEndpoint: '/api/pusher/auth',
 });
 
 // Helper function to get channel name for a specific channel
@@ -16,6 +17,7 @@ export const EVENTS = {
   JOIN_CHANNEL: 'join-channel',
   ADD_REACTION: 'add-reaction',
   REMOVE_REACTION: 'remove-reaction',
+  STATUS_CHANGED: 'status-changed',
 } as const;
 
 // Helper hook for subscribing to a channel

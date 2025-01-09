@@ -35,7 +35,9 @@ model WorkspaceMember {
     userId      String    // This will store Clerk user ID
     workspaceId String
     role        String    @default("member") // can be owner, admin, member
-    status      String    @default("offline") // can be online, offline, away
+    status      String    @default("online") // can be invisible, away, busy, online
+    statusMessage String?  // Optional custom status message
+    lastSeen    DateTime  @default(now())
     joinedAt    DateTime  @default(now())
     workspace   Workspace @relation(fields: [workspaceId], references: [id])
 

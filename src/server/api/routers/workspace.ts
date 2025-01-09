@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { pusher, EVENTS } from "@/server/pusher";
 
 export const workspaceRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -155,5 +156,53 @@ export const workspaceRouter = createTRPCRouter({
       });
 
       return true;
+    }),
+
+  updateStatus: protectedProcedure
+    .input(z.object({
+      workspaceId: z.string(),
+      status: z.enum(['invisible', 'away', 'busy', 'online']),
+      statusMessage: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await ctx.db.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.userId,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!member) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const updatedMember = await ctx.db.workspaceMember.update({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.userId,
+            workspaceId: input.workspaceId,
+          },
+        },
+        data: {
+          status: input.status,
+          statusMessage: input.statusMessage,
+          lastSeen: new Date(),
+        },
+      });
+
+      // Broadcast status change to all workspace members
+      await pusher.trigger(
+        `presence-workspace-${input.workspaceId}`,
+        EVENTS.STATUS_CHANGED,
+        {
+          userId: ctx.auth.userId,
+          status: input.status,
+          statusMessage: input.statusMessage,
+        }
+      );
+
+      return updatedMember;
     }),
 }); 

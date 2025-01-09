@@ -76,8 +76,9 @@ export default async function Layout({
   children: React.ReactNode;
   params: { workspaceId: string };
 }) {
-  const user = await currentUser();
   const { workspaceId } = await params;
+
+  const user = await currentUser();
   const { workspace, members, joinedChannels, unjoinedChannels } =
     await getWorkspaceData(workspaceId, user?.id ?? '');
 

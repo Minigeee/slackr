@@ -12,8 +12,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from './ui/dropdown-menu';
-import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { UserAvatar } from './user-avatar';
 import { useWorkspace } from '@/contexts/workspace-context';
 import type { Channel, Workspace } from '@prisma/client';
 import { api } from '@/trpc/react';
@@ -26,6 +28,8 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from './ui/context-menu';
+import { UserStatus } from '@/types/user';
+import { cn } from '@/lib/utils';
 
 function MemberContextMenu({
   member,
@@ -53,14 +57,81 @@ function MemberContextMenu({
   );
 }
 
-function UserAvatar({ user, className }: { user: User; className?: string }) {
+function UserFooter() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const router = useRouter();
+  const { members, workspace, setStatus } = useWorkspace();
+
+  const handleStatusChange = async (status: UserStatus) => {
+    if (!workspace) return;
+    await setStatus(status);
+  };
+
+  // Get current user object
+  const currentUser = members[user?.id ?? ''];
+
+  if (!currentUser) return null;
+
   return (
-    <Avatar className={className}>
-      <AvatarImage src={user.profilePicture} />
-      <AvatarFallback>
-        {user.firstName?.charAt(0) ?? user.email.charAt(0)}
-      </AvatarFallback>
-    </Avatar>
+    <div className='border-t p-2'>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant='ghost' className='w-full justify-start gap-2 px-2 hover:bg-indigo-100'>
+            <UserAvatar user={currentUser} className='h-8 w-8' />
+            <span className='text-sm font-medium'>
+              {currentUser.firstName
+                ? `${currentUser.firstName} ${currentUser.lastName}`
+                : currentUser.email}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className='w-56'>
+          <DropdownMenuLabel>Status</DropdownMenuLabel>
+          <DropdownMenuItem
+            className={cn(
+              'cursor-pointer',
+              currentUser.status === 'online' && 'bg-accent',
+            )}
+            onClick={() => handleStatusChange('online')}
+          >
+            <span className='mr-2 h-2 w-2 rounded-full bg-green-500' />
+            Online
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className={cn(
+              'cursor-pointer',
+              currentUser.status === 'busy' && 'bg-accent',
+            )}
+            onClick={() => handleStatusChange('busy')}
+          >
+            <span className='mr-2 h-2 w-2 rounded-full bg-red-600' />
+            Busy
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className={cn(
+              'cursor-pointer',
+              currentUser.status === 'invisible' && 'bg-accent',
+            )}
+            onClick={() => handleStatusChange('invisible')}
+          >
+            <span className='mr-2 h-2 w-2 rounded-full bg-gray-500' />
+            Appear Offline
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className='cursor-pointer text-red-500'
+            onClick={() => {
+              signOut();
+              router.push('/');
+            }}
+          >
+            <LogOut className='mr-2 h-4 w-4' />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -188,7 +259,6 @@ export default function WorkspaceSidebar() {
             {joinedChannels
               .filter((channel) => channel.type === 'dm')
               .map((channel) => {
-                // Extract the other user's ID from the DM channel name
                 const [, user1, user2] = channel.name.split('-');
                 const otherUserId = user1 === user.id ? user2 : user1;
                 const otherUser = otherUserId ? members[otherUserId] : null;
@@ -208,7 +278,7 @@ export default function WorkspaceSidebar() {
                         channel.id === channelId ? 'bg-indigo-100' : ''
                       }`}
                     >
-                      <UserAvatar user={otherUser} className='mr-2 h-5 w-5' />
+                      <UserAvatar user={otherUser} className='mr-2 h-5 w-5' indicatorClassName='right-1' />
                       {otherUser.firstName
                         ? `${otherUser.firstName} ${otherUser.lastName}`
                         : otherUser.email}
@@ -233,7 +303,7 @@ export default function WorkspaceSidebar() {
                 onMessageClick={handleCreateDM}
               >
                 <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100'>
-                  <UserAvatar user={member} className='mr-2 h-5 w-5' />
+                  <UserAvatar user={member} className='mr-2 h-5 w-5' indicatorClassName='right-1' />
                   {member.firstName
                     ? `${member.firstName} ${member.lastName}`
                     : member.email}
@@ -244,39 +314,8 @@ export default function WorkspaceSidebar() {
         </div>
       </ScrollArea>
 
-      {/* User Footer */}
-      <div className='border-t p-2'>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant='ghost' className='w-full justify-start gap-2 px-2 hover:bg-indigo-100'>
-              <Avatar className='h-8 w-8'>
-                <AvatarImage src={user?.imageUrl} />
-                <AvatarFallback>
-                  {user?.firstName?.charAt(0) ??
-                    user?.emailAddresses[0]?.emailAddress?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <span className='text-sm font-medium'>
-                {user.firstName
-                  ? `${user.firstName} ${user.lastName}`
-                  : user.emailAddresses[0]?.emailAddress}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className='w-56'>
-            <DropdownMenuItem
-              className='cursor-pointer text-red-500'
-              onClick={() => {
-                signOut();
-                router.push('/');
-              }}
-            >
-              <LogOut className='mr-2 h-4 w-4' />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {/* Replace the old footer with the new component */}
+      <UserFooter />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   MessageWithUser,
 } from '@/types/message';
 import { generateUploadPresignedUrl, getFileUrl } from '@/server/s3';
+import { UserAvatar } from './user-avatar';
 
 interface ThreadViewProps {
   threadId: string;
@@ -448,14 +449,8 @@ export default function ChannelView({
 
                   return (
                     <div className='flex items-center'>
-                      <Avatar className='mr-2 h-8 w-8'>
-                        <AvatarImage src={otherUser?.profilePicture} />
-                        <AvatarFallback>
-                          {otherUser?.firstName?.charAt(0) ??
-                            otherUser?.email?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className='font-semibold'>
+                      <UserAvatar user={otherUser ?? null} className='h-8 w-8' />
+                      <span className='font-semibold ml-2'>
                         {otherUser?.firstName
                           ? `${otherUser.firstName} ${otherUser.lastName}`
                           : otherUser?.email}

@@ -20,4 +20,5 @@ export const EVENTS = {
   JOIN_CHANNEL: 'join-channel',
   ADD_REACTION: 'add-reaction',
   REMOVE_REACTION: 'remove-reaction',
+  STATUS_CHANGED: 'status-changed',
 } as const; 
