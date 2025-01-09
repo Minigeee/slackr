@@ -72,7 +72,6 @@ export default function WorkspaceSidebar() {
   const router = useRouter();
   const { workspace, joinedChannels, unjoinedChannels, members, _mutators } =
     useWorkspace();
-  const utils = api.useContext();
   const createDM = api.channel.createDM.useMutation({
     onSuccess: (channel) => {
       // Update local state if this is a new channel
@@ -138,7 +137,7 @@ export default function WorkspaceSidebar() {
   };
 
   return (
-    <div className='flex h-full w-64 flex-col border-r bg-background'>
+    <div className='flex h-full w-64 flex-col border-r bg-indigo-50'>
       {/* Workspace Header */}
       <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
         <h2 className='font-semibold'>{workspace.name}</h2>
@@ -153,7 +152,7 @@ export default function WorkspaceSidebar() {
             </h3>
             <CreateChannelDialog
               trigger={
-                <Button variant='ghost' size='icon' className='h-5 w-5'>
+                <Button variant='ghost' size='icon' className='h-5 w-5 hover:bg-indigo-100'>
                   <Plus className='h-4 w-4' />
                 </Button>
               }
@@ -170,8 +169,8 @@ export default function WorkspaceSidebar() {
                 <Link
                   key={channel.id}
                   href={`/w/${workspace.id}/${channel.id}`}
-                  className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
-                    channel.id === channelId ? 'bg-accent' : ''
+                  className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100 ${
+                    channel.id === channelId ? 'bg-indigo-100' : ''
                   }`}
                 >
                   # {channel.name}
@@ -205,8 +204,8 @@ export default function WorkspaceSidebar() {
                   >
                     <Link
                       href={`/w/${workspace.id}/${channel.id}`}
-                      className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
-                        channel.id === channelId ? 'bg-accent' : ''
+                      className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100 ${
+                        channel.id === channelId ? 'bg-indigo-100' : ''
                       }`}
                     >
                       <UserAvatar user={otherUser} className='mr-2 h-5 w-5' />
@@ -233,7 +232,7 @@ export default function WorkspaceSidebar() {
                 currentUserId={user.id}
                 onMessageClick={handleCreateDM}
               >
-                <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-muted'>
+                <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100'>
                   <UserAvatar user={member} className='mr-2 h-5 w-5' />
                   {member.firstName
                     ? `${member.firstName} ${member.lastName}`
@@ -249,7 +248,7 @@ export default function WorkspaceSidebar() {
       <div className='border-t p-2'>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant='ghost' className='w-full justify-start gap-2 px-2'>
+            <Button variant='ghost' className='w-full justify-start gap-2 px-2 hover:bg-indigo-100'>
               <Avatar className='h-8 w-8'>
                 <AvatarImage src={user?.imageUrl} />
                 <AvatarFallback>

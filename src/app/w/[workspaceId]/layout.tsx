@@ -5,6 +5,7 @@ import { WorkspaceProvider } from '@/contexts/workspace-context';
 import { SearchDropdown } from '@/components/search/search-dropdown';
 import { db } from '@/server/db';
 import { User } from '@/types/user';
+import Link from 'next/link';
 
 async function getWorkspaceData(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -93,8 +94,10 @@ export default async function Layout({
           unjoinedChannels={unjoinedChannels}
         >
           <div className='h-screen'>
-            <div className='h-[50px] border-b px-4 flex items-center gap-8'>
-              {/* <span className='text-purple-700 font-semibold text-3xl'>Slackr</span> */}
+            <div className='h-[50px] border-b px-4 flex items-center gap-8 bg-[hsl(265,56%,25%)]'>
+              <Link href='/' className='text-purple-50 font-bold text-2xl'>
+                Slackr
+              </Link>
               <div className='flex-1 flex justify-center'>
                 <SearchDropdown />
               </div>
