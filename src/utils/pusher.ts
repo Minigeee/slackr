@@ -7,7 +7,7 @@ export const pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!
 });
 
 // Helper function to get channel name for a specific channel
-export const getChannelName = (channelId: string) => `channel-${channelId}`;
+export const getChannelName = (channelId: string) => `private-channel-${channelId}`;
 
 // Event names (must match server-side events)
 export const EVENTS = {
@@ -18,6 +18,8 @@ export const EVENTS = {
   ADD_REACTION: 'add-reaction',
   REMOVE_REACTION: 'remove-reaction',
   STATUS_CHANGED: 'status-changed',
+  TYPING_START: 'client-typing-start',
+  TYPING_STOP: 'client-typing-stop',
 } as const;
 
 // Helper hook for subscribing to a channel

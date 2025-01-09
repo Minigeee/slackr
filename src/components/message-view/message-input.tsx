@@ -17,7 +17,7 @@ import {
   File,
   Smile,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { type MessageWithUser } from '@/types/message';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { type EmojiData } from '@emoji-mart/data';
+import { useChannel } from '@/contexts/channel-context';
 
 interface PendingAttachment {
   id: string;
@@ -51,6 +52,8 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const { typingUsers, startTyping, stopTyping } = useChannel();
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Strike, Emojis],
@@ -75,11 +78,56 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
           handleSend();
           return true;
         }
+
+        // Handle typing indicator
+        if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
+          handleTyping();
+        }
       },
     },
     immediatelyRender: false,
   });
-  
+
+  const handleTyping = useCallback(() => {
+    startTyping();
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set new timeout to stop typing after 2 seconds
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping();
+    }, 2000);
+  }, [startTyping, stopTyping]);
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        stopTyping();
+      }
+    };
+  }, [stopTyping]);
+
+  // Format typing indicator text
+  const typingText = useMemo(() => {
+    if (typingUsers.length === 0) return null;
+    
+    const names = typingUsers.map(u => u.name);
+    if (names.length === 1) {
+      return `${names[0]} is typing...`;
+    } else if (names.length === 2) {
+      return `${names[0]} and ${names[1]} are typing...`;
+    } else if (names.length === 3) {
+      return `${names[0]}, ${names[1]}, and ${names[2]} are typing...`;
+    } else {
+      return `${names[0]}, ${names[1]}, and ${names.length - 2} others are typing...`;
+    }
+  }, [typingUsers]);
+
   const handleSend = useCallback(() => {
     if (editor?.isEmpty && pendingAttachments.length === 0) return;
     const content = editor?.getHTML() ?? '';
@@ -187,39 +235,47 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
         </div>
       )}
 
-      {pendingAttachments.length > 0 && (
-        <div className='flex gap-2 overflow-x-auto px-4 py-2'>
-          {pendingAttachments.map((attachment) => (
-            <div
-              key={attachment.id}
-              className='relative flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border bg-muted'
-            >
-              {attachment.previewUrl ? (
-                <img
-                  src={attachment.previewUrl}
-                  alt={attachment.file.name}
-                  className='h-full w-full rounded-lg object-cover'
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-1" title={attachment.file.name}>
-                  <File className='h-8 w-8 text-muted-foreground' />
-                  <div className="text-xs text-muted-foreground truncate max-w-[72px] px-1">
-                    {attachment.file.name}
-                  </div>
-                </div>
-              )}
-              <Button
-                variant='secondary'
-                size='icon'
-                className='absolute -right-2 -top-2 h-6 w-6 rounded-full'
-                onClick={() => removeAttachment(attachment.id)}
+      <div className='relative'>
+        {typingUsers.length > 0 && (
+          <div className="absolute -top-6 left-0 z-10 rounded-sm bg-background/80 px-2 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-border animate-pulse">
+            <span className='animate-pulse'>{typingText}</span>
+          </div>
+        )}
+
+        {pendingAttachments.length > 0 && (
+          <div className='flex gap-2 overflow-x-auto px-4 py-2'>
+            {pendingAttachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className='relative flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border bg-muted'
               >
-                <X className='h-3 w-3' />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+                {attachment.previewUrl ? (
+                  <img
+                    src={attachment.previewUrl}
+                    alt={attachment.file.name}
+                    className='h-full w-full rounded-lg object-cover'
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1" title={attachment.file.name}>
+                    <File className='h-8 w-8 text-muted-foreground' />
+                    <div className="text-xs text-muted-foreground truncate max-w-[72px] px-1">
+                      {attachment.file.name}
+                    </div>
+                  </div>
+                )}
+                <Button
+                  variant='secondary'
+                  size='icon'
+                  className='absolute -right-2 -top-2 h-6 w-6 rounded-full'
+                  onClick={() => removeAttachment(attachment.id)}
+                >
+                  <X className='h-3 w-3' />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className='rounded-lg border bg-white'>
         <div className='flex items-center gap-1 border-b px-1 py-1'>

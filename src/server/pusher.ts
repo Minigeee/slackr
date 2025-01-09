@@ -10,7 +10,7 @@ export const pusher = new Pusher({
 });
 
 // Helper function to get channel name for a specific channel
-export const getChannelName = (channelId: string) => `channel-${channelId}`;
+export const getChannelName = (channelId: string) => `private-channel-${channelId}`;
 
 // Event names
 export const EVENTS = {
@@ -21,4 +21,6 @@ export const EVENTS = {
   ADD_REACTION: 'add-reaction',
   REMOVE_REACTION: 'remove-reaction',
   STATUS_CHANGED: 'status-changed',
+  TYPING_START: 'client-typing-start',
+  TYPING_STOP: 'client-typing-stop',
 } as const; 
