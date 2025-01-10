@@ -54,15 +54,15 @@ export const MessageContextMenu = ({
   const utils = api.useContext();
 
   const { mutateAsync: deleteMessage } = api.message.delete.useMutation({
-    onSuccess: () => {
-      utils.message.getAll.invalidate();
+    onSuccess: async () => {
+      await utils.message.getAll.invalidate();
     },
   });
 
   const { mutateAsync: togglePin } = api.message.togglePin.useMutation({
-    onSuccess: () => {
-      utils.message.getAll.invalidate();
-      utils.message.getPinned.invalidate();
+    onSuccess: async () => {
+      await utils.message.getAll.invalidate();
+      await utils.message.getPinned.invalidate();
     },
     onError: () => {
       // Revert optimistic update on error
@@ -73,11 +73,15 @@ export const MessageContextMenu = ({
   const handleCopy = () => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = message.content;
-    navigator.clipboard.writeText(tempDiv.textContent || '');
+    navigator.clipboard.writeText(tempDiv.textContent ?? '').catch(console.error);
   };
 
   const handleDelete = async () => {
-    await deleteMessage({ messageId: message.id });
+    try {
+      await deleteMessage({ messageId: message.id });
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
   };
 
   const handleViewThread = () => {
@@ -94,9 +98,13 @@ export const MessageContextMenu = ({
   };
 
   const handleTogglePin = async () => {
-    // Optimistic update
-    setIsPinned(!isPinned);
-    await togglePin({ messageId: message.id });
+    try {
+      // Optimistic update
+      setIsPinned(!isPinned);
+      await togglePin({ messageId: message.id });
+    } catch (error) {
+      console.error('Failed to toggle pin:', error);
+    }
   };
 
   const isAuthor = user?.id === message.userId;

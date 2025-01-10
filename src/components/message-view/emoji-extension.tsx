@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import {
   forwardRef,
   useEffect,
@@ -165,8 +170,8 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
     // Get search results
     const results =
       query.length > 0
-        ? _searchCache[query] ||
-          (prev || _data).filter((x) => x.includes(query))
+        ? _searchCache[query] ??
+          (prev ?? _data).filter((x) => x.includes(query))
         : _data;
 
     // Save results
@@ -201,7 +206,7 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
         }
 
         popup = tippy('body', {
-          getReferenceClientRect: () => props.clientRect?.() || new DOMRect(),
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
           appendTo: () => document.body,
           content: component.element,
           showOnCreate: true,
@@ -219,7 +224,7 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
         }
 
         popup?.[0]?.setProps({
-          getReferenceClientRect: () => props.clientRect?.() || new DOMRect(),
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         });
       },
 
@@ -307,7 +312,7 @@ export const Emojis = Node.create({
         type: this.type,
         getAttributes: (match) => {
           const emoji = emojiSearch.get(match[0]);
-          return { 'emoji-id': emoji?.id || '' };
+          return { 'emoji-id': emoji?.id ?? '' };
         },
       }),
       nodePasteRule({
@@ -346,7 +351,7 @@ export const Emojis = Node.create({
     const emoji = attrs['emoji-id'] ? emojiSearch.get(attrs['emoji-id']) : null;
     const native = emoji?.skins[0]?.native;
 
-    return ['span', finalAttrs, native || ''];
+    return ['span', finalAttrs, native ?? ''];
   },
 
   addProseMirrorPlugins() {

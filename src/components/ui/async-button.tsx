@@ -30,7 +30,11 @@ const AsyncButton = forwardRef<HTMLButtonElement, AsyncButtonProps>(
           setLoading(true);
 
           // Call fn
-          promise.catch(() => {}).finally(() => setLoading(false));
+          promise
+            .catch((error) => {
+              console.error('Async action error', error);
+            })
+            .finally(() => setLoading(false));
         }
       },
       [loading, props.onClick],
@@ -40,11 +44,11 @@ const AsyncButton = forwardRef<HTMLButtonElement, AsyncButtonProps>(
       <Button
         ref={ref}
         {...props}
-        disabled={props.disabled || loading}
+        disabled={props.disabled ?? loading}
         onClick={onClick}
       >
         {loading &&
-          (props.loader || (
+          (props.loader ?? (
             <Loader2Icon className='mr-2 h-4 w-4 animate-spin' />
           ))}
         {(!loading || !props.replace) && props.children}

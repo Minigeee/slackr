@@ -157,7 +157,7 @@ export function EmojiPicker({
   const [search, setSearch] = useState('');
   const [skin, setSkin] = useState('0');
   const [activeCategory, setActiveCategory] = useState(
-    data.categories[0]?.id || '',
+    data.categories[0]?.id ?? '',
   );
   const [hovered, setHovered] = useState<string | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);

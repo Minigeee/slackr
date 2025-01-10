@@ -182,7 +182,7 @@ const MessageInput = ({
 
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
+      const files = Array.from(event.target.files ?? []);
       if (files.length === 0) return;
 
       // Limit to 10 files total

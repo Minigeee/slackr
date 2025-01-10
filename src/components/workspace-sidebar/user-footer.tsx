@@ -82,9 +82,13 @@ export function UserFooter() {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className='cursor-pointer text-red-500'
-            onClick={() => {
-              signOut();
-              router.push('/');
+            onClick={async () => {
+              try {
+                await signOut();
+                router.push('/');
+              } catch (error) {
+                console.error('Failed to sign out:', error);
+              }
             }}
           >
             <LogOut className='mr-2 h-4 w-4' />

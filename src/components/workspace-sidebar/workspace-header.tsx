@@ -23,9 +23,9 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
   const { toast } = useToast();
 
   const { mutateAsync: updateWorkspace } = api.workspace.update.useMutation({
-    onSuccess: () => {
-      utils.workspace.getAll.invalidate();
-      utils.workspace.getById.invalidate({ workspaceId: workspace.id });
+    onSuccess: async () => {
+      await utils.workspace.getAll.invalidate();
+      await utils.workspace.getById.invalidate({ workspaceId: workspace.id });
     },
   });
 
@@ -47,10 +47,14 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
 
   const handleCopyInviteLink = () => {
     const inviteLink = `${window.location.origin}/join/${workspace.id}`;
-    navigator.clipboard.writeText(inviteLink);
-    toast({
-      description: 'Invite link copied to clipboard',
-    });
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      toast({
+          description: 'Invite link copied to clipboard',
+        });
+      })
+      .catch((error) => {
+        console.error('Failed to copy invite link to clipboard', error);
+      });
   };
 
   if (isEditing) {

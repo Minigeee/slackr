@@ -52,7 +52,7 @@ async function JoinCard({
         </CardHeader>
         <CardContent>
           <p className='text-center text-gray-600'>
-            You've been invited to join this workspace
+            You&apos;ve been invited to join this workspace
           </p>
         </CardContent>
         <CardFooter className='flex justify-center'>
@@ -70,9 +70,10 @@ async function JoinCard({
 export default async function JoinWorkspacePage({
   params,
 }: {
-  params: { workspaceId: string };
+  params: Promise<{ workspaceId: string }>;
 }) {
   const user = await currentUser();
+  const { workspaceId } = await params;
 
   return (
     <>
@@ -80,7 +81,7 @@ export default async function JoinWorkspacePage({
         <RedirectToSignIn />
       </SignedOut>
       <SignedIn>
-        {user && <JoinCard workspaceId={params.workspaceId} userId={user.id} />}
+        {user && <JoinCard workspaceId={workspaceId} userId={user.id} />}
       </SignedIn>
     </>
   );

@@ -40,8 +40,8 @@ export function ChannelButton(props: ChannelButtonProps) {
   const utils = api.useContext();
 
   const { mutateAsync: updateChannel } = api.channel.update.useMutation({
-    onSuccess: () => {
-      utils.channel.getAll.invalidate();
+    onSuccess: async () => {
+      await utils.channel.getAll.invalidate();
     },
   });
 

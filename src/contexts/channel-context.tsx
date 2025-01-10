@@ -120,7 +120,7 @@ export function ChannelProvider(props: ChannelProviderProps) {
     const threads = new Map<string, Message[]>();
     withUser.forEach((message) => {
       if (message.threadId) {
-        const thread = threads.get(message.threadId) || [];
+        const thread = threads.get(message.threadId) ?? [];
         thread.push(message);
         threads.set(message.threadId, thread);
       }
@@ -284,7 +284,7 @@ export function ChannelProvider(props: ChannelProviderProps) {
               return {
                 ...msg,
                 reactions: [
-                  ...(msg.reactions || []),
+                  ...(msg.reactions ?? []),
                   {
                     id: `temp-${Date.now()}`,
                     emoji,
@@ -319,7 +319,7 @@ export function ChannelProvider(props: ChannelProviderProps) {
                   reactions: [
                     ...(msg.reactions?.filter(
                       (r) => !(r.userId === user.id && r.emoji === emoji),
-                    ) || []),
+                    ) ?? []),
                     existingReaction,
                   ],
                 };
@@ -426,7 +426,7 @@ export function ChannelProvider(props: ChannelProviderProps) {
               return {
                 ...msg,
                 reactions: [
-                  ...(msg.reactions || []),
+                  ...(msg.reactions ?? []),
                   {
                     id: `${userId}-${emoji}`,
                     emoji,
@@ -459,7 +459,7 @@ export function ChannelProvider(props: ChannelProviderProps) {
             if (msg.id === messageId) {
               return {
                 ...msg,
-                reactions: (msg.reactions || []).filter(
+                reactions: (msg.reactions ?? []).filter(
                   (reaction) =>
                     !(reaction.userId === userId && reaction.emoji === emoji),
                 ),

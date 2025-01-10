@@ -77,22 +77,22 @@ export default function SearchPage() {
   const sortedMessages = useMemo(() => {
     if (!searchResults?.items) return [];
 
-    const messages = [...searchResults.items];
+    const messages = [...searchResults.items] as MessageWithUser[];
     const channelMap = new Map(workspace.joinedChannels.map((c) => [c.id, c]));
 
-    const messagesWithChannel = messages.map((message) => ({
+    const messagesWithChannel = messages.map((message: MessageWithUser) => ({
       ...message,
       channel: channelMap.get(message.channelId),
     }));
 
     if (sort === 'newest') {
       return messagesWithChannel.sort(
-        (a, b) =>
+        (a: MessageWithUser, b: MessageWithUser) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     } else if (sort === 'oldest') {
       return messagesWithChannel.sort(
-        (a, b) =>
+        (a: MessageWithUser, b: MessageWithUser) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
     }
@@ -103,17 +103,17 @@ export default function SearchPage() {
   const selected = useMemo(() => {
     if (!selectedMessage) return null;
     const message = sortedMessages.find(
-      (message) => message.id === selectedMessage,
+      (message: MessageWithUser) => message.id === selectedMessage,
     );
     const channel = workspace.joinedChannels.find(
-      (channel) => channel.id === message?.channelId,
+      (channel: Channel) => channel.id === message?.channelId,
     );
     if (!message || !channel) return null;
     return {
       message,
       channel,
     };
-  }, [selectedMessage, sortedMessages]);
+  }, [selectedMessage, sortedMessages, workspace.joinedChannels]);
 
   return (
     <div className='flex h-full'>
@@ -122,7 +122,7 @@ export default function SearchPage() {
           <div className='flex items-center justify-between'>
             <h1 className='flex items-center gap-2 text-xl font-semibold'>
               <Search className='h-5 w-5' />
-              Search results for "{query}"
+              Search results for &quot;{query}&quot;
             </h1>
             <Select
               value={sort}

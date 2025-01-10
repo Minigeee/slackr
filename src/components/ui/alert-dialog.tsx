@@ -183,7 +183,9 @@ export function DefaultAlertDialogFooter(props: DefaultAlertDialogFooterProps) {
         // Call fn
         promise
           .then(() => props.onOpenChange?.(false))
-          .catch(() => {})
+          .catch((error) => {
+            console.error('Async action error', error);
+          })
           .finally(() => setLoading(false));
       }
     },
@@ -195,11 +197,11 @@ export function DefaultAlertDialogFooter(props: DefaultAlertDialogFooterProps) {
       <AlertDialogCancel onClick={props.onCancel}>Cancel</AlertDialogCancel>
       <AlertDialogAction
         variant={props.actionVariant}
-        disabled={props.actionDisabled || loading}
+        disabled={props.actionDisabled ?? loading}
         onClick={onAction}
       >
         {loading && <Loader2Icon className='mr-2 h-4 w-4 animate-spin' />}
-        {props.actionLabel || 'Continue'}
+        {props.actionLabel ?? 'Continue'}
       </AlertDialogAction>
     </AlertDialogFooter>
   );
@@ -242,7 +244,7 @@ export function StrictAlertDialog({
 
       <DefaultAlertDialogFooter
         {...props}
-        actionDisabled={props.actionDisabled || text !== type}
+        actionDisabled={props.actionDisabled ?? text !== type}
       />
     </>
   );

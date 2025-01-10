@@ -74,7 +74,7 @@ export default async function Layout({
   params,
 }: {
   children: React.ReactNode;
-  params: { workspaceId: string };
+  params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = await params;
 

@@ -275,8 +275,8 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const utils = api.useContext();
   const { mutateAsync: updateMessage } = api.message.update.useMutation({
-    onSuccess: () => {
-      utils.message.getAll.invalidate();
+    onSuccess: async () => {
+      await utils.message.getAll.invalidate();
       setIsEditing(false);
     },
   });
@@ -317,7 +317,7 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; userIds: string[] }>();
     message.reactions?.forEach((reaction) => {
-      const existing = groups.get(reaction.emoji) || { count: 0, userIds: [] };
+      const existing = groups.get(reaction.emoji) ?? { count: 0, userIds: [] };
       existing.count++;
       existing.userIds.push(reaction.userId);
       groups.set(reaction.emoji, existing);

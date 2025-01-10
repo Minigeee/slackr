@@ -5,6 +5,7 @@ import { User, UserStatus } from '@/types/user';
 import { EVENTS, pusherClient } from '@/utils/pusher';
 import { useUser } from '@clerk/nextjs';
 import { Channel, Workspace } from '@prisma/client';
+import { Members } from 'pusher-js';
 import {
   createContext,
   Dispatch,
@@ -148,7 +149,7 @@ export function WorkspaceProvider({
 
     const channel = pusherClient.subscribe(`presence-workspace-${workspaceId}`);
 
-    channel.bind('pusher:subscription_succeeded', (members: any) => {
+    channel.bind('pusher:subscription_succeeded', (members: Members) => {
       console.log('subscription succeeded', members);
       setMembers((prev) => {
         const newMembers = { ...prev };
@@ -156,8 +157,8 @@ export function WorkspaceProvider({
           if (newMembers[member.id]) {
             newMembers[member.id] = {
               ...newMembers[member.id],
-              status: member.info.status || 'online',
-              statusMessage: member.info.statusMessage,
+              status: (member.info.status || 'online') as UserStatus,
+              statusMessage: member.info.statusMessage as string | null,
               lastSeen: new Date(),
             } as User;
           }
@@ -174,8 +175,8 @@ export function WorkspaceProvider({
           ...prev,
           [member.id]: {
             ...prev[member.id],
-            status: member.info.status || 'online',
-            statusMessage: member.info.statusMessage,
+            status: (member.info.status || 'online') as UserStatus,
+            statusMessage: member.info.statusMessage as string | null,
             lastSeen: new Date(),
           },
         };
@@ -240,7 +241,7 @@ export function WorkspaceProvider({
 
   const setStatus = useCallback(
     async (status: UserStatus, statusMessage?: string | null) => {
-      if (!workspaceId || !user) return;
+      if (!workspaceId || !user || status === 'offline') return;
 
       // Update local state optimistically
       setMembers((prev) => ({
@@ -256,7 +257,7 @@ export function WorkspaceProvider({
       // Make the API call
       await updateStatus.mutateAsync({
         workspaceId,
-        status: status as any,
+        status,
         statusMessage,
       });
     },

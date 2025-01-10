@@ -32,8 +32,8 @@ export const emojiSearch = {
     const fromNative = _nativeToId[emojiId];
 
     return (
-      data.emojis[emojiId] ||
-      (fromAliases ? data.emojis[fromAliases] : undefined) ||
+      data.emojis[emojiId] ??
+      (fromAliases ? data.emojis[fromAliases] : undefined) ??
       (fromNative ? data.emojis[fromNative] : undefined)
     );
   },
@@ -46,7 +46,7 @@ export const emojiSearch = {
     value: string,
     { maxResults = 90, caller }: SearchOptions = {},
   ): EmojiData[] | undefined => {
-    if (!value || !value.trim().length) return undefined;
+    if (!value) return undefined;
 
     const values = value
       .toLowerCase()
@@ -58,7 +58,7 @@ export const emojiSearch = {
 
     if (!values.length) return undefined;
 
-    let pool = Pool || (Pool = Object.values(data.emojis));
+    let pool = Pool ?? (Pool = Object.values(data.emojis));
     let results: EmojiData[] = [];
     let scores: Record<string, number> = {};
 
@@ -75,7 +75,7 @@ export const emojiSearch = {
 
         results.push(emoji);
         scores[emoji.id] =
-          (scores[emoji.id] || 0) + (emoji.id === value ? 0 : score + 1);
+          (scores[emoji.id] ?? 0) + (emoji.id === value ? 0 : score + 1);
       }
 
       pool = results;
@@ -86,8 +86,8 @@ export const emojiSearch = {
     }
 
     results.sort((a: EmojiData, b: EmojiData) => {
-      const aScore = scores[a.id] || 0;
-      const bScore = scores[b.id] || 0;
+      const aScore = scores[a.id] ?? 0;
+      const bScore = scores[b.id] ?? 0;
 
       if (aScore === bScore) {
         return a.id.localeCompare(b.id);

@@ -102,7 +102,8 @@ export function SearchDropdown() {
               >
                 <Search className='h-4 w-4' />
                 <span>
-                  Search for "<span className='font-medium'>{query}</span>"
+                  Search for &quot;<span className='font-medium'>{query}</span>
+                  &quot;
                 </span>
               </button>
             </div>

@@ -29,9 +29,9 @@ const getChannel = cache(
 );
 
 interface Props {
-  params: {
+  params: Promise<{
     channelId: string;
-  };
+  }>;
 }
 
 export default async function ChannelPage({ params }: Props) {
