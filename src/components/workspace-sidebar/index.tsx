@@ -1,35 +1,26 @@
 'use client';
 
-import Link from 'next/link';
-import { Plus, LogOut, MessageSquare } from 'lucide-react';
-import { Button } from './ui/button';
-import { useParams, useRouter } from 'next/navigation';
-import { CreateChannelDialog } from './create-channel-dialog';
-import { ScrollArea } from './ui/scroll-area';
-import { useUser, useClerk } from '@clerk/nextjs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from './ui/dropdown-menu';
-import { UserAvatar } from './user-avatar';
 import { useWorkspace } from '@/contexts/workspace-context';
-import type { Channel, Workspace } from '@prisma/client';
 import { api } from '@/trpc/react';
-import { pusherClient, EVENTS } from '@/utils/pusher';
 import { User } from '@/types/user';
+import { useClerk, useUser } from '@clerk/nextjs';
+import { MessageSquare, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
+import { CreateChannelDialog } from '../create-channel-dialog';
+import { Button } from '../ui/button';
 import {
   ContextMenu,
-  ContextMenuItem,
   ContextMenuContent,
+  ContextMenuItem,
   ContextMenuTrigger,
-} from './ui/context-menu';
-import { UserStatus } from '@/types/user';
-import { cn } from '@/lib/utils';
+} from '../ui/context-menu';
+import { ScrollArea } from '../ui/scroll-area';
+import { UserAvatar } from '../user-avatar';
+import { ChannelButton } from './channel-button';
+import { UserFooter } from './user-footer';
+import { WorkspaceHeader } from './workspace-header';
 
 function MemberContextMenu({
   member,
@@ -54,84 +45,6 @@ function MemberContextMenu({
         )}
       </ContextMenuContent>
     </ContextMenu>
-  );
-}
-
-function UserFooter() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const router = useRouter();
-  const { members, workspace, setStatus } = useWorkspace();
-
-  const handleStatusChange = async (status: UserStatus) => {
-    if (!workspace) return;
-    await setStatus(status);
-  };
-
-  // Get current user object
-  const currentUser = members[user?.id ?? ''];
-
-  if (!currentUser) return null;
-
-  return (
-    <div className='border-t p-2'>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='w-full justify-start gap-2 px-2 hover:bg-indigo-100'>
-            <UserAvatar user={currentUser} className='h-8 w-8' />
-            <span className='text-sm font-medium'>
-              {currentUser.firstName
-                ? `${currentUser.firstName} ${currentUser.lastName}`
-                : currentUser.email}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className='w-56'>
-          <DropdownMenuLabel>Status</DropdownMenuLabel>
-          <DropdownMenuItem
-            className={cn(
-              'cursor-pointer',
-              currentUser.status === 'online' && 'bg-accent',
-            )}
-            onClick={() => handleStatusChange('online')}
-          >
-            <span className='mr-2 h-2 w-2 rounded-full bg-green-500' />
-            Online
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className={cn(
-              'cursor-pointer',
-              currentUser.status === 'busy' && 'bg-accent',
-            )}
-            onClick={() => handleStatusChange('busy')}
-          >
-            <span className='mr-2 h-2 w-2 rounded-full bg-red-600' />
-            Busy
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className={cn(
-              'cursor-pointer',
-              currentUser.status === 'invisible' && 'bg-accent',
-            )}
-            onClick={() => handleStatusChange('invisible')}
-          >
-            <span className='mr-2 h-2 w-2 rounded-full bg-gray-500' />
-            Appear Offline
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className='cursor-pointer text-red-500'
-            onClick={() => {
-              signOut();
-              router.push('/');
-            }}
-          >
-            <LogOut className='mr-2 h-4 w-4' />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   );
 }
 
@@ -175,7 +88,10 @@ export default function WorkspaceSidebar() {
             <div className='h-4 w-20 animate-pulse rounded bg-muted'></div>
             <div className='space-y-2'>
               {[1, 2, 3].map((i) => (
-                <div key={i} className='h-8 w-full animate-pulse rounded bg-muted'></div>
+                <div
+                  key={i}
+                  className='h-8 w-full animate-pulse rounded bg-muted'
+                ></div>
               ))}
             </div>
           </div>
@@ -210,9 +126,7 @@ export default function WorkspaceSidebar() {
   return (
     <div className='flex h-full w-64 flex-col border-r bg-indigo-50'>
       {/* Workspace Header */}
-      <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
-        <h2 className='font-semibold'>{workspace.name}</h2>
-      </div>
+      <WorkspaceHeader workspace={workspace} />
 
       {/* Channels Section */}
       <ScrollArea className='flex-grow'>
@@ -223,7 +137,11 @@ export default function WorkspaceSidebar() {
             </h3>
             <CreateChannelDialog
               trigger={
-                <Button variant='ghost' size='icon' className='h-5 w-5 hover:bg-indigo-100'>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-5 w-5 hover:bg-indigo-100'
+                >
                   <Plus className='h-4 w-4' />
                 </Button>
               }
@@ -237,15 +155,12 @@ export default function WorkspaceSidebar() {
             {joinedChannels
               .filter((channel) => channel.type !== 'dm')
               .map((channel) => (
-                <Link
+                <ChannelButton
                   key={channel.id}
-                  href={`/w/${workspace.id}/${channel.id}`}
-                  className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100 ${
-                    channel.id === channelId ? 'bg-indigo-100' : ''
-                  }`}
-                >
-                  # {channel.name}
-                </Link>
+                  channel={channel}
+                  workspace={workspace}
+                  selected={channel.id === channelId}
+                />
               ))}
           </nav>
         </div>
@@ -278,7 +193,11 @@ export default function WorkspaceSidebar() {
                         channel.id === channelId ? 'bg-indigo-100' : ''
                       }`}
                     >
-                      <UserAvatar user={otherUser} className='mr-2 h-5 w-5' indicatorClassName='right-1' />
+                      <UserAvatar
+                        user={otherUser}
+                        className='mr-2 h-5 w-5'
+                        indicatorClassName='right-1'
+                      />
                       {otherUser.firstName
                         ? `${otherUser.firstName} ${otherUser.lastName}`
                         : otherUser.email}
@@ -303,7 +222,11 @@ export default function WorkspaceSidebar() {
                 onMessageClick={handleCreateDM}
               >
                 <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100'>
-                  <UserAvatar user={member} className='mr-2 h-5 w-5' indicatorClassName='right-1' />
+                  <UserAvatar
+                    user={member}
+                    className='mr-2 h-5 w-5'
+                    indicatorClassName='right-1'
+                  />
                   {member.firstName
                     ? `${member.firstName} ${member.lastName}`
                     : member.email}
