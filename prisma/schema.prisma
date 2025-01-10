@@ -79,6 +79,8 @@ model Message {
     channelId   String
     parentId    String?   // For thread replies
     threadId    String?   // ID of the original message that started the thread
+    pinnedAt    DateTime? // When the message was pinned, null if not pinned
+    pinnedBy    String?   // User ID who pinned the message
     thread      Message?  @relation("ThreadMessages", fields: [threadId], references: [id])
     replies     Message[] @relation("ThreadMessages")
     channel     Channel   @relation(fields: [channelId], references: [id])
@@ -87,6 +89,7 @@ model Message {
 
     @@index([content])
     @@index([channelId, createdAt])
+    @@index([channelId, pinnedAt]) // Add index for pinned message queries
 }
 
 model MessageReaction {

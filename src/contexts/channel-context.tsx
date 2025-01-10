@@ -138,6 +138,8 @@ export function ChannelProvider(props: ChannelProviderProps) {
         channelId: props.channel.id,
         parentId: null,
         threadId: threadId ?? null,
+        pinnedAt: null,
+        pinnedBy: null,
         updatedAt: new Date(),
         attachments: optimisticAttachments,
       };
@@ -434,6 +436,27 @@ export function ChannelProvider(props: ChannelProviderProps) {
       if (data.userId === user?.id) return;
       console.log('Typing stop', data);
       setTypingUsers(prev => prev.filter(u => u.id !== data.userId));
+    });
+
+    // Handle pin status updates
+    pusherChannel.bind(EVENTS.PIN_MESSAGE, (updatedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === updatedMessage.id
+            ? { ...msg, pinnedAt: updatedMessage.pinnedAt, pinnedBy: updatedMessage.pinnedBy }
+            : msg
+        ),
+      );
+    });
+
+    pusherChannel.bind(EVENTS.UNPIN_MESSAGE, (updatedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === updatedMessage.id
+            ? { ...msg, pinnedAt: null, pinnedBy: null }
+            : msg
+        ),
+      );
     });
 
     // Cleanup on unmount

@@ -149,6 +149,8 @@ export const messageRouter = createTRPCRouter({
             imageUrl: sender.imageUrl,
             email: sender.emailAddresses[0]?.emailAddress,
             profilePicture: sender.imageUrl,
+            status: "online",
+            lastSeen: new Date(),
           } as User,
         }
       );
@@ -332,6 +334,8 @@ export const messageRouter = createTRPCRouter({
               imageUrl: user.imageUrl,
               email: user.emailAddresses[0]?.emailAddress,
               profilePicture: user.imageUrl,
+              status: "online",
+              lastSeen: new Date(),
             } as User,
           }
         );
@@ -434,6 +438,8 @@ export const messageRouter = createTRPCRouter({
             imageUrl: user.imageUrl,
             email: user.emailAddresses[0]?.emailAddress,
             profilePicture: user.imageUrl,
+            status: "online",
+            lastSeen: new Date(),
           } as User,
         ]),
       );
@@ -443,5 +449,109 @@ export const messageRouter = createTRPCRouter({
         ...message,
         user: usersMap.get(message.userId),
       }));
+    }),
+
+  getPinned: protectedProcedure
+    .input(z.object({
+      channelId: z.string(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Verify user has access to channel
+      const member = await ctx.db.channelMember.findUnique({
+        where: {
+          userId_channelId: {
+            userId: ctx.auth.userId,
+            channelId: input.channelId,
+          },
+        },
+      });
+
+      if (!member) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const messages = await ctx.db.message.findMany({
+        where: { 
+          channelId: input.channelId,
+          pinnedAt: { not: null }
+        },
+        orderBy: { pinnedAt: "desc" },
+        include: {
+          attachments: true,
+          reactions: true,
+        },
+      });
+
+      // Get user info for messages
+      const client = await clerkClient();
+      const userIds = [...new Set(messages.map((m) => m.userId))];
+      const users = await client.users.getUserList({ userId: userIds });
+      const usersMap = new Map(
+        users.data.map((user) => [
+          user.id,
+          {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            imageUrl: user.imageUrl,
+            email: user.emailAddresses[0]?.emailAddress,
+            profilePicture: user.imageUrl,
+            status: "online",
+            lastSeen: new Date(),
+          } as User,
+        ])
+      );
+
+      return messages.map((message) => ({
+        ...message,
+        user: usersMap.get(message.userId),
+      }));
+    }),
+
+  togglePin: protectedProcedure
+    .input(z.object({
+      messageId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const message = await ctx.db.message.findUnique({
+        where: { id: input.messageId },
+        include: { channel: { include: { workspace: { include: { members: true } } } } },
+      });
+
+      if (!message) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Only allow workspace admins/owners to pin messages
+      const isAdmin = message.channel.workspace.members.some(
+        (member) =>
+          member.userId === ctx.auth.userId &&
+          ["admin", "owner"].includes(member.role)
+      );
+
+      if (!isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const updatedMessage = await ctx.db.message.update({
+        where: { id: input.messageId },
+        data: {
+          pinnedAt: message.pinnedAt ? null : new Date(),
+          pinnedBy: message.pinnedAt ? null : ctx.auth.userId,
+        },
+        include: {
+          attachments: true,
+          reactions: true,
+        },
+      });
+
+      // Trigger Pusher event for pinned/unpinned message
+      await pusher.trigger(
+        getChannelName(message.channelId),
+        message.pinnedAt ? EVENTS.UNPIN_MESSAGE : EVENTS.PIN_MESSAGE,
+        updatedMessage
+      );
+
+      return updatedMessage;
     }),
 }); 

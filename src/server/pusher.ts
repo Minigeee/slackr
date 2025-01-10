@@ -23,4 +23,6 @@ export const EVENTS = {
   STATUS_CHANGED: 'status-changed',
   TYPING_START: 'client-typing-start',
   TYPING_STOP: 'client-typing-stop',
+  PIN_MESSAGE: 'pin-message',
+  UNPIN_MESSAGE: 'unpin-message',
 } as const; 
