@@ -48,35 +48,12 @@ export function CreateChannelDialog({
   workspaceId,
 }: CreateChannelDialogProps) {
   const router = useRouter();
-  const utils = api.useUtils();
-  const { refetchWorkspace } = useWorkspace();
+  const { createChannel, joinChannel } = useWorkspace();
 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState<string>();
   const [loading, setLoading] = useState(false);
-
-  const createChannel = api.channel.create.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.channel.getAllWithMembership.invalidate({ workspaceId }),
-        utils.workspace.getById.invalidate({ workspaceId }),
-        utils.workspace.getMembers.invalidate({ workspaceId }),
-      ]);
-      await refetchWorkspace();
-    },
-  });
-
-  const joinChannel = api.channel.join.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.channel.getAllWithMembership.invalidate({ workspaceId }),
-        utils.workspace.getById.invalidate({ workspaceId }),
-        utils.workspace.getMembers.invalidate({ workspaceId }),
-      ]);
-      await refetchWorkspace();
-    },
-  });
 
   const form = useForm<CreateChannelForm>({
     resolver: zodResolver(createChannelSchema),
@@ -105,18 +82,15 @@ export function CreateChannelDialog({
     setLoading(true);
     try {
       if (data.mode === 'create' && data.channelName) {
-        const channel = await createChannel.mutateAsync({
-          workspaceId,
-          name: data.channelName,
-        });
-        onSubmit({ mode: 'create', channelName: data.channelName });
-        router.push(`/w/${workspaceId}/${channel.id}`);
+        const channel = await createChannel(data.channelName);
+        if (channel) {
+          onSubmit({ mode: 'create', channelName: data.channelName });
+          router.push(`/w/${workspaceId}/${channel.id}`);
+        }
       } else if (data.mode === 'join' && selectedChannelId) {
-        await joinChannel.mutateAsync({
-          channelId: selectedChannelId,
-        });
+        const channel = await joinChannel(selectedChannelId);
         onSubmit({ mode: 'join', channelId: selectedChannelId });
-        router.push(`/w/${workspaceId}/${selectedChannelId}`);
+        router.push(`/w/${workspaceId}/${channel.id}`);
       }
       setOpen(false);
 

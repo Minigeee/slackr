@@ -100,9 +100,19 @@ export default function SearchPage() {
   }, [searchResults?.items, sort, workspace.joinedChannels]);
 
   // Get full selected message object
-  const selectedMessageObject = useMemo(() => {
+  const selected = useMemo(() => {
     if (!selectedMessage) return null;
-    return sortedMessages.find((message) => message.id === selectedMessage);
+    const message = sortedMessages.find(
+      (message) => message.id === selectedMessage,
+    );
+    const channel = workspace.joinedChannels.find(
+      (channel) => channel.id === message?.channelId,
+    );
+    if (!message || !channel) return null;
+    return {
+      message,
+      channel,
+    };
   }, [selectedMessage, sortedMessages]);
 
   return (
@@ -181,18 +191,17 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {selectedMessage && (
+      {selected && reversedContextMessages && (
         <ChannelProvider
-          activeThreadId={null}
-          setActiveThreadId={() => {}}
-          toggleReaction={async () => {}}
+          channel={selected.channel}
+          initialMessages={reversedContextMessages}
         >
           <div className='flex h-full w-[400px] flex-col border-l xl:w-[500px]'>
             <div className='flex h-12 items-center justify-between border-b px-4'>
               <h3 className='font-semibold'>
-                {selectedMessageObject?.channel?.type === 'dm'
+                {selected.channel.type === 'dm'
                   ? 'Direct Message'
-                  : `#${selectedMessageObject?.channel?.name}`}
+                  : `#${selected.channel.name}`}
               </h3>
               <Button
                 variant='ghost'

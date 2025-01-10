@@ -13,10 +13,12 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
+import { useWorkspace } from '@/contexts/workspace-context';
 import { api } from '@/trpc/react';
 import { Channel, Workspace } from '@prisma/client';
 import { Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface ChannelButtonProps {
@@ -29,18 +31,15 @@ interface ChannelButtonProps {
 }
 
 export function ChannelButton(props: ChannelButtonProps) {
+  const router = useRouter();
+  const { deleteChannel } = useWorkspace();
+
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelName, setChannelName] = useState(props.channel.name);
   const utils = api.useContext();
 
   const { mutateAsync: updateChannel } = api.channel.update.useMutation({
-    onSuccess: () => {
-      utils.channel.getAll.invalidate();
-    },
-  });
-
-  const { mutateAsync: deleteChannel } = api.channel.delete.useMutation({
     onSuccess: () => {
       utils.channel.getAll.invalidate();
     },
@@ -56,8 +55,13 @@ export function ChannelButton(props: ChannelButtonProps) {
   };
 
   const handleDelete = async () => {
-    await deleteChannel({ channelId: props.channel.id });
-    setIsDeleteDialogOpen(false);
+    try {
+      await deleteChannel(props.channel.id);
+      setIsDeleteDialogOpen(false);
+      router.push(`/w/${props.workspace.id}`);
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

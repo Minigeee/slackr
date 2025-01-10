@@ -28,10 +28,14 @@ interface WorkspaceContextType {
     status: UserStatus,
     statusMessage?: string | null,
   ) => Promise<void>;
+  createChannel: (name: string) => Promise<Channel | null>;
+  joinChannel: (channelId: string) => Promise<Channel>;
+  deleteChannel: (channelId: string) => Promise<void>;
   _mutators: {
     setMembers: Dispatch<SetStateAction<Record<string, User>>>;
     setJoinedChannels: Dispatch<SetStateAction<Channel[]>>;
     setMemberStatus: (userId: string, status: UserStatus) => void;
+    setUnjoinedChannels: Dispatch<SetStateAction<Channel[]>>;
   };
 }
 
@@ -57,6 +61,32 @@ export function WorkspaceProvider({
   const { user } = useUser();
   const workspaceId = initialWorkspace?.id;
   const updateStatus = api.workspace.updateStatus.useMutation();
+
+  // Add createChannel and joinChannel mutations
+  const createChannel = api.channel.create.useMutation({
+    onSuccess: async (newChannel) => {
+      setJoinedChannels((prev) => [...prev, newChannel]);
+      await refetchWorkspace();
+    },
+  });
+
+  const joinChannel = api.channel.join.useMutation({
+    onSuccess: async (channelMember, { channelId }) => {
+      // Find the channel in unjoined channels
+      const channel = unjoinedChannels.find((c) => c.id === channelId);
+      if (channel) {
+        setJoinedChannels((prev) => [...prev, channel]);
+        setUnjoinedChannels((prev) => prev.filter((c) => c.id !== channelId));
+      }
+      await refetchWorkspace();
+    },
+  });
+
+  const deleteChannelMutation = api.channel.delete.useMutation({
+    onSuccess: async (_, { channelId }) => {
+      await refetchWorkspace();
+    },
+  });
 
   const { data: workspaceData, refetch: refetchWorkspace } =
     api.workspace.getById.useQuery(
@@ -107,6 +137,9 @@ export function WorkspaceProvider({
   const [members, setMembers] = useState<Record<string, User>>(initialMembers);
   const [joinedChannels, setJoinedChannels] = useState<Channel[]>(
     initialJoinedChannels,
+  );
+  const [unjoinedChannels, setUnjoinedChannels] = useState<Channel[]>(
+    initialUnjoinedChannels,
   );
 
   // Subscribe to presence channel and status changes
@@ -237,10 +270,50 @@ export function WorkspaceProvider({
       value={{
         workspace: workspaceData ?? null,
         joinedChannels: joinedChannels,
-        unjoinedChannels: channelsData?.unjoined ?? initialUnjoinedChannels,
+        unjoinedChannels: unjoinedChannels,
         members: members,
         isLoading,
         setStatus,
+        createChannel: useCallback(async (name: string) => {
+          if (!workspaceId) return null;
+          const channel = await createChannel.mutateAsync({
+            workspaceId,
+            name,
+          });
+          return channel;
+        }, [workspaceId, createChannel]),
+        joinChannel: useCallback(async (channelId: string) => {
+          await joinChannel.mutateAsync({ channelId });
+          const channel = unjoinedChannels.find((c) => c.id === channelId);
+          if (!channel) {
+            throw new Error('Channel not found');
+          }
+          return channel;
+        }, [joinChannel, unjoinedChannels]),
+        deleteChannel: useCallback(async (channelId: string) => {
+          // Optimistically remove the channel from the lists
+          const channel = joinedChannels.find((c) => c.id === channelId);
+          if (channel) {
+            setJoinedChannels((prev) => prev.filter((c) => c.id !== channelId));
+          } else {
+            setUnjoinedChannels((prev) => prev.filter((c) => c.id !== channelId));
+          }
+
+          try {
+            await deleteChannelMutation.mutateAsync({ channelId });
+          } catch (error) {
+            // If the deletion fails, revert the optimistic update
+            if (channel) {
+              setJoinedChannels((prev) => [...prev, channel]);
+            } else {
+              const unjoinedChannel = unjoinedChannels.find((c) => c.id === channelId);
+              if (unjoinedChannel) {
+                setUnjoinedChannels((prev) => [...prev, unjoinedChannel]);
+              }
+            }
+            throw error;
+          }
+        }, [deleteChannelMutation, joinedChannels, unjoinedChannels]),
         refetchWorkspace: useCallback(async () => {
           await refetchWorkspace();
         }, [refetchWorkspace]),
@@ -248,6 +321,7 @@ export function WorkspaceProvider({
           setMembers,
           setJoinedChannels,
           setMemberStatus,
+          setUnjoinedChannels,
         },
       }}
     >

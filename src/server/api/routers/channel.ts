@@ -186,8 +186,32 @@ export const channelRouter = createTRPCRouter({
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
-      await ctx.db.channel.delete({
-        where: { id: input.channelId },
+      // Delete channel and all related records in a transaction
+      await ctx.db.$transaction(async (tx) => {
+        // Delete all channel members
+        await tx.channelMember.deleteMany({
+          where: { channelId: input.channelId },
+        });
+
+        // Delete all message reactions
+        await tx.messageReaction.deleteMany({
+          where: { message: { channelId: input.channelId } },
+        });
+
+        // Delete all message attachments
+        await tx.attachment.deleteMany({
+          where: { message: { channelId: input.channelId } },
+        });
+
+        // Delete all messages
+        await tx.message.deleteMany({
+          where: { channelId: input.channelId },
+        });
+
+        // Finally, delete the channel
+        await tx.channel.delete({
+          where: { id: input.channelId },
+        });
       });
 
       return true;
