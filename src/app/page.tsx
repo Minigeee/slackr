@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
-import { api, HydrateClient } from '@/trpc/server';
 import { Button } from '@/components/ui/button';
+import { HydrateClient } from '@/trpc/server';
 
 export default async function Home() {
   return (
@@ -13,9 +13,7 @@ export default async function Home() {
           </h1>
           <h2>Slack more, work less</h2>
           <Link href='/w' passHref>
-            <Button>
-              Get Started
-            </Button>
+            <Button>Get Started</Button>
           </Link>
         </div>
       </main>

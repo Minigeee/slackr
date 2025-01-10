@@ -1,9 +1,9 @@
-import { createTRPCRouter } from "@/server/api/trpc";
-import { messageRouter } from "./routers/message";
-import { workspaceRouter } from "./routers/workspace";
-import { channelRouter } from "./routers/channel";
-import { attachmentRouter } from "./routers/attachment";
-import { searchRouter } from "./routers/search";
+import { createTRPCRouter } from '@/server/api/trpc';
+import { attachmentRouter } from './routers/attachment';
+import { channelRouter } from './routers/channel';
+import { messageRouter } from './routers/message';
+import { searchRouter } from './routers/search';
+import { workspaceRouter } from './routers/workspace';
 
 /**
  * This is the primary router for your server.

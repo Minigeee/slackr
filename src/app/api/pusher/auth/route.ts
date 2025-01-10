@@ -1,23 +1,23 @@
-import { NextRequest } from "next/server";
-import { pusher } from "@/server/pusher";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { db } from "@/server/db";
+import { db } from '@/server/db';
+import { pusher } from '@/server/pusher';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import { NextRequest } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response('Unauthorized', { status: 401 });
     }
 
     const formData = await req.formData();
-    const socketId = formData.get("socket_id") as string;
-    const channel = formData.get("channel_name") as string;
+    const socketId = formData.get('socket_id') as string;
+    const channel = formData.get('channel_name') as string;
 
     // Get user data from Clerk
     const user = await currentUser();
     if (!user) {
-      return new Response("User not found", { status: 404 });
+      return new Response('User not found', { status: 404 });
     }
 
     // Handle different channel types
@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
       // Workspace presence channel
       const parts = channel.split('-');
       if (parts.length < 3 || !parts[2]) {
-        return new Response("Invalid workspace channel name", { status: 400 });
+        return new Response('Invalid workspace channel name', { status: 400 });
       }
       const workspaceId = parts[2];
-      
+
       // Verify workspace membership
       const member = await db.workspaceMember.findUnique({
         where: {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!member) {
-        return new Response("Not a member of this workspace", { status: 403 });
+        return new Response('Not a member of this workspace', { status: 403 });
       }
 
       // Generate auth for presence channel
@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
           status: member.status,
           statusMessage: member.statusMessage,
           lastSeen: member.lastSeen,
-          name: user.firstName ?? user.emailAddresses[0]?.emailAddress ?? "Unknown",
+          name:
+            user.firstName ?? user.emailAddresses[0]?.emailAddress ?? 'Unknown',
           email: user.emailAddresses[0]?.emailAddress,
         },
       });
@@ -71,14 +72,15 @@ export async function POST(req: NextRequest) {
       });
 
       if (!member) {
-        return new Response("Forbidden", { status: 403 });
+        return new Response('Forbidden', { status: 403 });
       }
 
       // Generate auth for private channel
       const authResponse = pusher.authorizeChannel(socketId, channel, {
         user_id: userId,
         user_info: {
-          name: user.firstName ?? user.emailAddresses[0]?.emailAddress ?? "Unknown",
+          name:
+            user.firstName ?? user.emailAddresses[0]?.emailAddress ?? 'Unknown',
           email: user.emailAddresses[0]?.emailAddress,
         },
       });
@@ -86,9 +88,9 @@ export async function POST(req: NextRequest) {
       return Response.json(authResponse);
     }
 
-    return new Response("Invalid channel type", { status: 400 });
+    return new Response('Invalid channel type', { status: 400 });
   } catch (error) {
-    console.error("Pusher auth error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    console.error('Pusher auth error:', error);
+    return new Response('Internal Server Error', { status: 500 });
   }
-} 
+}

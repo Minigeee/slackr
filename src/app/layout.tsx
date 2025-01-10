@@ -4,9 +4,9 @@ import { GeistSans } from 'geist/font/sans';
 import { type Metadata } from 'next';
 import { Noto_Color_Emoji } from 'next/font/google';
 
+import { Toaster } from '@/components/ui/toaster';
 import { TRPCReactProvider } from '@/trpc/react';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',
@@ -27,7 +27,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang='en' className={`${GeistSans.variable} ${emoji.variable} font-sans antialiased`}>
+      <html
+        lang='en'
+        className={`${GeistSans.variable} ${emoji.variable} font-sans antialiased`}
+      >
         <body>
           <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster />

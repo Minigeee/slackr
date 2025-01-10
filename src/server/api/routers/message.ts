@@ -1,17 +1,19 @@
-import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { TRPCError } from "@trpc/server";
-import { pusher, getChannelName, EVENTS } from "@/server/pusher";
-import { clerkClient } from "@clerk/nextjs/server";
-import { User } from "@/types/user";
+import { EVENTS, getChannelName, pusher } from '@/server/pusher';
+import { User } from '@/types/user';
+import { clerkClient } from '@clerk/nextjs/server';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
 
 export const messageRouter = createTRPCRouter({
   getAll: protectedProcedure
-    .input(z.object({
-      channelId: z.string(),
-      cursor: z.string().optional(),
-      limit: z.number().min(1).max(100).default(50),
-    }))
+    .input(
+      z.object({
+        channelId: z.string(),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).default(50),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       // Verify user has access to channel
       const member = await ctx.db.channelMember.findUnique({
@@ -24,14 +26,14 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       const messages = await ctx.db.message.findMany({
         where: { channelId: input.channelId },
         take: input.limit + 1,
         cursor: input.cursor ? { id: input.cursor } : undefined,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         include: {
           attachments: true,
           reactions: true,
@@ -55,7 +57,7 @@ export const messageRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
-        include: { 
+        include: {
           channel: true,
           attachments: true,
           reactions: true,
@@ -63,7 +65,7 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!message) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Verify user has access to channel
@@ -77,27 +79,31 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       return message;
     }),
 
   create: protectedProcedure
-    .input(z.object({
-      channelId: z.string(),
-      content: z.string(),
-      parentId: z.string().optional(),
-      threadId: z.string().optional(),
-      attachments: z.array(z.object({
-        key: z.string(),
-        filename: z.string(),
-        mimeType: z.string(),
-        size: z.number(),
-        width: z.number().optional(),
-        height: z.number().optional(),
-      })),
-    }))
+    .input(
+      z.object({
+        channelId: z.string(),
+        content: z.string(),
+        parentId: z.string().optional(),
+        threadId: z.string().optional(),
+        attachments: z.array(
+          z.object({
+            key: z.string(),
+            filename: z.string(),
+            mimeType: z.string(),
+            size: z.number(),
+            width: z.number().optional(),
+            height: z.number().optional(),
+          }),
+        ),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       // Verify user has access to channel
       const member = await ctx.db.channelMember.findUnique({
@@ -110,7 +116,7 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       // Create message and attachments in a transaction
@@ -122,7 +128,7 @@ export const messageRouter = createTRPCRouter({
           parentId: input.parentId,
           threadId: input.threadId,
           attachments: {
-            create: input.attachments.map(attachment => ({
+            create: input.attachments.map((attachment) => ({
               ...attachment,
               url: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${attachment.key}`,
             })),
@@ -149,32 +155,34 @@ export const messageRouter = createTRPCRouter({
             imageUrl: sender.imageUrl,
             email: sender.emailAddresses[0]?.emailAddress,
             profilePicture: sender.imageUrl,
-            status: "online",
+            status: 'online',
             lastSeen: new Date(),
           } as User,
-        }
+        },
       );
 
       return message;
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      messageId: z.string(),
-      content: z.string(),
-    }))
+    .input(
+      z.object({
+        messageId: z.string(),
+        content: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
       });
 
       if (!message) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Verify user is message author
       if (message.userId !== ctx.auth.userId) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       const updatedMessage = await ctx.db.message.update({
@@ -189,7 +197,7 @@ export const messageRouter = createTRPCRouter({
       await pusher.trigger(
         getChannelName(message.channelId),
         EVENTS.UPDATE_MESSAGE,
-        updatedMessage
+        updatedMessage,
       );
 
       return updatedMessage;
@@ -200,25 +208,25 @@ export const messageRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
-        include: { 
+        include: {
           channel: { include: { workspace: { include: { members: true } } } },
           attachments: true,
         },
       });
 
       if (!message) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Allow message author or workspace admins to delete
       const isAdmin = message.channel.workspace.members.some(
         (member) =>
           member.userId === ctx.auth.userId &&
-          ["admin", "owner"].includes(member.role)
+          ['admin', 'owner'].includes(member.role),
       );
 
       if (message.userId !== ctx.auth.userId && !isAdmin) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       // Delete attachments from S3
@@ -229,9 +237,12 @@ export const messageRouter = createTRPCRouter({
               where: { id: attachment.id },
             });
           } catch (error) {
-            console.error(`Failed to delete attachment ${attachment.id}:`, error);
+            console.error(
+              `Failed to delete attachment ${attachment.id}:`,
+              error,
+            );
           }
-        })
+        }),
       );
 
       await ctx.db.message.delete({
@@ -242,17 +253,19 @@ export const messageRouter = createTRPCRouter({
       await pusher.trigger(
         getChannelName(message.channelId),
         EVENTS.DELETE_MESSAGE,
-        { messageId: input.messageId }
+        { messageId: input.messageId },
       );
 
       return true;
     }),
 
   toggleReaction: protectedProcedure
-    .input(z.object({
-      messageId: z.string(),
-      emoji: z.string(),
-    }))
+    .input(
+      z.object({
+        messageId: z.string(),
+        emoji: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
@@ -260,7 +273,7 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!message) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Verify user has access to channel
@@ -274,7 +287,7 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       // Check if reaction already exists
@@ -302,7 +315,7 @@ export const messageRouter = createTRPCRouter({
             messageId: input.messageId,
             emoji: input.emoji,
             userId: ctx.auth.userId,
-          }
+          },
         );
 
         return { added: false };
@@ -334,10 +347,10 @@ export const messageRouter = createTRPCRouter({
               imageUrl: user.imageUrl,
               email: user.emailAddresses[0]?.emailAddress,
               profilePicture: user.imageUrl,
-              status: "online",
+              status: 'online',
               lastSeen: new Date(),
             } as User,
-          }
+          },
         );
 
         return { added: true };
@@ -345,10 +358,12 @@ export const messageRouter = createTRPCRouter({
     }),
 
   getContext: protectedProcedure
-    .input(z.object({
-      messageId: z.string(),
-      limit: z.number().min(1).max(100).default(50),
-    }))
+    .input(
+      z.object({
+        messageId: z.string(),
+        limit: z.number().min(1).max(100).default(50),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       // First get the target message to find its channel and timestamp
       const targetMessage = await ctx.db.message.findUnique({
@@ -357,7 +372,7 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!targetMessage) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Verify user has access to channel
@@ -371,14 +386,17 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       const halfLimit = Math.floor(input.limit / 2);
 
       // Get messages based on whether the target is in a thread
       const messages = await (async () => {
-        if (targetMessage.threadId || targetMessage.id === targetMessage.threadId) {
+        if (
+          targetMessage.threadId ||
+          targetMessage.id === targetMessage.threadId
+        ) {
           // Message is in a thread or is a thread parent, get thread messages
           const threadId = targetMessage.threadId ?? targetMessage.id;
           return await ctx.db.message.findMany({
@@ -416,11 +434,7 @@ export const messageRouter = createTRPCRouter({
             take: halfLimit,
           });
 
-          return [
-            ...beforeMessages.reverse(),
-            targetMessage,
-            ...afterMessages,
-          ];
+          return [...beforeMessages.reverse(), targetMessage, ...afterMessages];
         }
       })();
 
@@ -438,7 +452,7 @@ export const messageRouter = createTRPCRouter({
             imageUrl: user.imageUrl,
             email: user.emailAddresses[0]?.emailAddress,
             profilePicture: user.imageUrl,
-            status: "online",
+            status: 'online',
             lastSeen: new Date(),
           } as User,
         ]),
@@ -452,9 +466,11 @@ export const messageRouter = createTRPCRouter({
     }),
 
   getPinned: protectedProcedure
-    .input(z.object({
-      channelId: z.string(),
-    }))
+    .input(
+      z.object({
+        channelId: z.string(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       // Verify user has access to channel
       const member = await ctx.db.channelMember.findUnique({
@@ -467,15 +483,15 @@ export const messageRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       const messages = await ctx.db.message.findMany({
-        where: { 
+        where: {
           channelId: input.channelId,
-          pinnedAt: { not: null }
+          pinnedAt: { not: null },
         },
-        orderBy: { pinnedAt: "desc" },
+        orderBy: { pinnedAt: 'desc' },
         include: {
           attachments: true,
           reactions: true,
@@ -496,10 +512,10 @@ export const messageRouter = createTRPCRouter({
             imageUrl: user.imageUrl,
             email: user.emailAddresses[0]?.emailAddress,
             profilePicture: user.imageUrl,
-            status: "online",
+            status: 'online',
             lastSeen: new Date(),
           } as User,
-        ])
+        ]),
       );
 
       return messages.map((message) => ({
@@ -509,28 +525,32 @@ export const messageRouter = createTRPCRouter({
     }),
 
   togglePin: protectedProcedure
-    .input(z.object({
-      messageId: z.string(),
-    }))
+    .input(
+      z.object({
+        messageId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
-        include: { channel: { include: { workspace: { include: { members: true } } } } },
+        include: {
+          channel: { include: { workspace: { include: { members: true } } } },
+        },
       });
 
       if (!message) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Only allow workspace admins/owners to pin messages
       const isAdmin = message.channel.workspace.members.some(
         (member) =>
           member.userId === ctx.auth.userId &&
-          ["admin", "owner"].includes(member.role)
+          ['admin', 'owner'].includes(member.role),
       );
 
       if (!isAdmin) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       const updatedMessage = await ctx.db.message.update({
@@ -549,9 +569,9 @@ export const messageRouter = createTRPCRouter({
       await pusher.trigger(
         getChannelName(message.channelId),
         message.pinnedAt ? EVENTS.UNPIN_MESSAGE : EVENTS.PIN_MESSAGE,
-        updatedMessage
+        updatedMessage,
       );
 
       return updatedMessage;
     }),
-}); 
+});

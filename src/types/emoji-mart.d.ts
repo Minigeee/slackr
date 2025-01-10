@@ -37,4 +37,4 @@ declare module '@emoji-mart/data' {
   };
 
   export default data;
-} 
+}

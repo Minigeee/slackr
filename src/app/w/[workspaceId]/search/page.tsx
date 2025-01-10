@@ -1,14 +1,8 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { api } from '@/trpc/react';
-import { useWorkspace } from '@/contexts/workspace-context';
-import { useState, useMemo, useEffect } from 'react';
-import { Loader2, Search, X } from 'lucide-react';
 import MessageList from '@/components/message-view/message-list';
-import { cn } from '@/lib/utils';
-import type { Message, Channel } from '@prisma/client';
-import type { User } from '@/types/user';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -16,9 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { ChannelProvider } from '@/contexts/channel-context';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useWorkspace } from '@/contexts/workspace-context';
+import { cn } from '@/lib/utils';
+import { api } from '@/trpc/react';
+import type { User } from '@/types/user';
+import type { Channel, Message } from '@prisma/client';
+import { Loader2, Search, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
 type SortOption = 'relevance' | 'newest' | 'oldest';
 

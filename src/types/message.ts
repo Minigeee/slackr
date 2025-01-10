@@ -1,5 +1,5 @@
-import { Message, Attachment, MessageReaction } from "@prisma/client";
-import { User } from "./user";
+import { Attachment, Message, MessageReaction } from '@prisma/client';
+import { User } from './user';
 
 export type MessageWithUser = Message & {
   user?: User;

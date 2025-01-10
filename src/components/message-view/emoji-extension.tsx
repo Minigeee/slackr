@@ -1,27 +1,27 @@
 import {
   forwardRef,
   useEffect,
-  useState,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 
 import { Node, nodePasteRule } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
-import Suggestion, { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
+import Suggestion, {
+  SuggestionOptions,
+  SuggestionProps,
+} from '@tiptap/suggestion';
 
-import {
-  ScrollArea,
-  ScrollBar,
-} from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-import { Emoji } from '../emoji';
 import { emojiSearch } from '@/utils/emoji';
 import data, { EmojiData } from '@emoji-mart/data';
 import emojiRegex from 'emoji-regex';
 import tippy, { Instance, Props as TippyProps } from 'tippy.js';
+import { Emoji } from '../emoji';
 
 const _emojiRegex = emojiRegex();
 
@@ -108,41 +108,39 @@ const EmojiSuggestionList = forwardRef<
   }));
 
   return (
-    <div className="relative rounded-md border bg-popover text-popover-foreground shadow-md min-w-[200px]">
-      <ScrollArea className="h-[200px] p-1">
-        <div className="space-y-0.5">
+    <div className='relative rounded-md border bg-popover text-popover-foreground shadow-md min-w-[200px]'>
+      <ScrollArea className='h-[200px] p-1'>
+        <div className='space-y-0.5'>
           {props.items.length ? (
             <>
               {props.items.map((emoji, i) => (
                 <Button
                   key={emoji.id}
-                  variant="ghost"
+                  variant='ghost'
                   className={cn(
                     'w-full justify-start px-2 py-1 text-sm',
-                    selectedIndex === i && 'bg-accent'
+                    selectedIndex === i && 'bg-accent',
                   )}
                   onClick={() => selectItem(i)}
                   onMouseEnter={() => setSelectedIndex(i)}
                 >
-                  <div className="flex items-center gap-2">
-                    <Emoji id={emoji.id} size="1rem" />
-                    <span className="font-medium">:{emoji.id}:</span>
+                  <div className='flex items-center gap-2'>
+                    <Emoji id={emoji.id} size='1rem' />
+                    <span className='font-medium'>:{emoji.id}:</span>
                   </div>
                 </Button>
               ))}
               {props.items.length >= MAX_ROWS && (
-                <p className="px-2 py-1 text-xs text-muted-foreground">
+                <p className='px-2 py-1 text-xs text-muted-foreground'>
                   Continue typing to view more...
                 </p>
               )}
             </>
           ) : (
-            <p className="p-2 text-sm text-muted-foreground">
-              No results
-            </p>
+            <p className='p-2 text-sm text-muted-foreground'>No results</p>
           )}
         </div>
-        <ScrollBar orientation="vertical" />
+        <ScrollBar orientation='vertical' />
       </ScrollArea>
     </div>
   );
@@ -161,12 +159,15 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
     query = query.toLocaleLowerCase();
 
     // Check if a prev query exists
-    const prev = query.length > 1 ? _searchCache[query.slice(0, -1)] : undefined;
-    
+    const prev =
+      query.length > 1 ? _searchCache[query.slice(0, -1)] : undefined;
+
     // Get search results
-    const results = query.length > 0
-      ? _searchCache[query] || (prev || _data).filter((x) => x.includes(query))
-      : _data;
+    const results =
+      query.length > 0
+        ? _searchCache[query] ||
+          (prev || _data).filter((x) => x.includes(query))
+        : _data;
 
     // Save results
     _searchCache[query] = results;
@@ -200,8 +201,7 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
         }
 
         popup = tippy('body', {
-          getReferenceClientRect: () =>
-            props.clientRect?.() || new DOMRect(),
+          getReferenceClientRect: () => props.clientRect?.() || new DOMRect(),
           appendTo: () => document.body,
           content: component.element,
           showOnCreate: true,
@@ -219,8 +219,7 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
         }
 
         popup?.[0]?.setProps({
-          getReferenceClientRect: () =>
-            props.clientRect?.() || new DOMRect(),
+          getReferenceClientRect: () => props.clientRect?.() || new DOMRect(),
         });
       },
 
@@ -318,7 +317,7 @@ export const Emojis = Node.create({
           // Ensure match[1] exists before passing to emojiSearch
           const emojiId = match[1];
           if (!emojiId) return null;
-          
+
           const emoji = emojiSearch.get(emojiId);
           return emoji ? { 'emoji-id': emojiId } : null;
         },
@@ -336,7 +335,7 @@ export const Emojis = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     const attrs = HTMLAttributes as { 'emoji-id'?: string };
-    
+
     // Construct attrs
     const finalAttrs = {
       ...HTMLAttributes,

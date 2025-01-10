@@ -1,4 +1,4 @@
-import Pusher from "pusher";
+import Pusher from 'pusher';
 
 // Initialize Pusher server instance
 export const pusher = new Pusher({
@@ -10,7 +10,8 @@ export const pusher = new Pusher({
 });
 
 // Helper function to get channel name for a specific channel
-export const getChannelName = (channelId: string) => `private-channel-${channelId}`;
+export const getChannelName = (channelId: string) =>
+  `private-channel-${channelId}`;
 
 // Event names
 export const EVENTS = {
@@ -25,4 +26,4 @@ export const EVENTS = {
   TYPING_STOP: 'client-typing-stop',
   PIN_MESSAGE: 'pin-message',
   UNPIN_MESSAGE: 'unpin-message',
-} as const; 
+} as const;

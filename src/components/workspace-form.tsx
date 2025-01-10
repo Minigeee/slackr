@@ -1,20 +1,20 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useFormStatus } from 'react-dom';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
-  
+
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type='submit' className='w-full' disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
           Creating...
         </>
       ) : (
@@ -24,10 +24,10 @@ function SubmitButton() {
   );
 }
 
-export function WorkspaceForm({ 
-  onSubmit 
-}: { 
-  onSubmit: (formData: FormData) => Promise<{ error: string } | undefined>
+export function WorkspaceForm({
+  onSubmit,
+}: {
+  onSubmit: (formData: FormData) => Promise<{ error: string } | undefined>;
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +54,11 @@ export function WorkspaceForm({
               required
               className='mb-4'
             />
-            {error && (
-              <p className="text-sm text-red-500 mb-4">{error}</p>
-            )}
+            {error && <p className='text-sm text-red-500 mb-4'>{error}</p>}
             <SubmitButton />
           </form>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

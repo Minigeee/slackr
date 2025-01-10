@@ -1,7 +1,7 @@
-import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { TRPCError } from "@trpc/server";
-import { pusher, EVENTS } from "@/server/pusher";
+import { EVENTS, pusher } from '@/server/pusher';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
 
 export const workspaceRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -21,7 +21,7 @@ export const workspaceRouter = createTRPCRouter({
       });
 
       if (!workspace) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       return workspace;
@@ -36,10 +36,12 @@ export const workspaceRouter = createTRPCRouter({
     }),
 
   create: protectedProcedure
-    .input(z.object({
-      name: z.string(),
-      description: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string(),
+        description: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.workspace.create({
         data: {
@@ -48,7 +50,7 @@ export const workspaceRouter = createTRPCRouter({
           members: {
             create: {
               userId: ctx.auth.userId,
-              role: "owner",
+              role: 'owner',
             },
           },
         },
@@ -56,29 +58,33 @@ export const workspaceRouter = createTRPCRouter({
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      workspaceId: z.string(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const member = await ctx.db.workspaceMember.findFirst({
         where: {
           workspaceId: input.workspaceId,
           userId: ctx.auth.userId,
-          role: { in: ["owner", "admin"] },
+          role: { in: ['owner', 'admin'] },
         },
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       return ctx.db.workspace.update({
         where: { id: input.workspaceId },
         data: {
           name: input.name,
-          ...(input.name && { slug: input.name.toLowerCase().replace(/\s+/g, '-') }),
+          ...(input.name && {
+            slug: input.name.toLowerCase().replace(/\s+/g, '-'),
+          }),
         },
       });
     }),
@@ -90,12 +96,12 @@ export const workspaceRouter = createTRPCRouter({
         where: {
           workspaceId: input.workspaceId,
           userId: ctx.auth.userId,
-          role: "owner",
+          role: 'owner',
         },
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       await ctx.db.workspace.delete({
@@ -106,17 +112,19 @@ export const workspaceRouter = createTRPCRouter({
     }),
 
   addMember: protectedProcedure
-    .input(z.object({
-      workspaceId: z.string(),
-      userId: z.string(),
-    }))
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        userId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
         return await ctx.db.workspaceMember.create({
           data: {
             workspaceId: input.workspaceId,
             userId: input.userId,
-            role: "member",
+            role: 'member',
           },
         });
       } catch (error: any) {
@@ -129,21 +137,23 @@ export const workspaceRouter = createTRPCRouter({
     }),
 
   removeMember: protectedProcedure
-    .input(z.object({
-      workspaceId: z.string(),
-      userId: z.string(),
-    }))
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        userId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const member = await ctx.db.workspaceMember.findFirst({
         where: {
           workspaceId: input.workspaceId,
           userId: ctx.auth.userId,
-          role: { in: ["owner", "admin"] },
+          role: { in: ['owner', 'admin'] },
         },
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       await ctx.db.workspaceMember.delete({
@@ -159,11 +169,13 @@ export const workspaceRouter = createTRPCRouter({
     }),
 
   updateStatus: protectedProcedure
-    .input(z.object({
-      workspaceId: z.string(),
-      status: z.enum(['invisible', 'away', 'busy', 'online']),
-      statusMessage: z.string().nullable().optional(),
-    }))
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        status: z.enum(['invisible', 'away', 'busy', 'online']),
+        statusMessage: z.string().nullable().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const member = await ctx.db.workspaceMember.findUnique({
         where: {
@@ -175,7 +187,7 @@ export const workspaceRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       const updatedMember = await ctx.db.workspaceMember.update({
@@ -200,9 +212,9 @@ export const workspaceRouter = createTRPCRouter({
           userId: ctx.auth.userId,
           status: input.status,
           statusMessage: input.statusMessage,
-        }
+        },
       );
 
       return updatedMember;
     }),
-}); 
+});

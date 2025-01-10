@@ -1,16 +1,14 @@
 'use client';
 
-import { type Message } from '@prisma/client';
-import MessageList from './message-list';
-import MessageInput from './message-input';
-import { ScrollArea } from '../ui/scroll-area';
-import { User } from '@/types/user';
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { useWorkspace } from '@/contexts/workspace-context';
-import { Button } from '../ui/button';
-import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullMessage, MessageWithUser } from '@/types/message';
+import { type Message } from '@prisma/client';
+import { ChevronDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
+import MessageInput from './message-input';
+import MessageList from './message-list';
 
 interface MessageViewProps {
   messages: FullMessage[];
@@ -81,10 +79,12 @@ const MessageView = (props: MessageViewProps) => {
   const handleSendMessage = useCallback(
     async (content: string, attachments: File[], threadId?: string) => {
       setReplyTo(undefined);
-      const message = await props.onSendMessage(content, attachments, threadId).catch(() => {
-        // If the message fails to send, revert the reply
-        setReplyTo(replyTo);
-      });
+      const message = await props
+        .onSendMessage(content, attachments, threadId)
+        .catch(() => {
+          // If the message fails to send, revert the reply
+          setReplyTo(replyTo);
+        });
       return message;
     },
     [props.onSendMessage, replyTo],

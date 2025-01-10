@@ -1,24 +1,29 @@
-import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { TRPCError } from "@trpc/server";
-import { generateUploadPresignedUrl, getFileUrl, deleteFile } from "@/server/s3";
-import crypto from "crypto";
-import path from "path";
+import { deleteFile, generateUploadPresignedUrl } from '@/server/s3';
+import { TRPCError } from '@trpc/server';
+import crypto from 'crypto';
+import path from 'path';
+import { z } from 'zod';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
 
 export const attachmentRouter = createTRPCRouter({
   // Generate a presigned URL for file upload
   getUploadUrl: protectedProcedure
-    .input(z.object({
-      filename: z.string(),
-      contentType: z.string(),
-    }))
+    .input(
+      z.object({
+        filename: z.string(),
+        contentType: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       // Generate a unique key for the file
       const extension = path.extname(input.filename);
-      const key = `attachments/${crypto.randomBytes(16).toString("hex")}${extension}`;
+      const key = `attachments/${crypto.randomBytes(16).toString('hex')}${extension}`;
 
       // Generate presigned URL
-      const presignedUrl = await generateUploadPresignedUrl(key, input.contentType);
+      const presignedUrl = await generateUploadPresignedUrl(
+        key,
+        input.contentType,
+      );
 
       return {
         presignedUrl,
@@ -36,7 +41,7 @@ export const attachmentRouter = createTRPCRouter({
       });
 
       if (!attachment) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
       // Verify user has access to the message
@@ -50,7 +55,7 @@ export const attachmentRouter = createTRPCRouter({
       });
 
       if (!member) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
       // Delete from S3
@@ -63,4 +68,4 @@ export const attachmentRouter = createTRPCRouter({
 
       return true;
     }),
-}); 
+});

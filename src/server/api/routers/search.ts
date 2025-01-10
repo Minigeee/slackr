@@ -1,8 +1,8 @@
+import { User } from '@/types/user';
+import { clerkClient, type User as ClerkUser } from '@clerk/nextjs/server';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { TRPCError } from '@trpc/server';
-import { clerkClient, type User as ClerkUser } from '@clerk/nextjs/server';
-import { User } from '@/types/user';
 
 export const searchRouter = createTRPCRouter({
   messages: protectedProcedure

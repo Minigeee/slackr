@@ -1,4 +1,3 @@
-import type { Workspace } from '@prisma/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,11 +5,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { api } from '@/trpc/react';
+import type { Workspace } from '@prisma/client';
 import { ChevronDown, Copy, Pencil } from 'lucide-react';
 import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { api } from '@/trpc/react';
-import { useToast } from '@/hooks/use-toast';
 
 interface WorkspaceHeaderProps {
   workspace: Workspace;
@@ -56,7 +56,7 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
   if (isEditing) {
     return (
       <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
-        <form onSubmit={handleRename} className="flex-1">
+        <form onSubmit={handleRename} className='flex-1'>
           <Input
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
@@ -66,7 +66,7 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
             }}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="h-8"
+            className='h-8'
           />
         </form>
       </div>
@@ -76,18 +76,18 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
   return (
     <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1 font-semibold outline-none">
+        <DropdownMenuTrigger className='flex items-center gap-1 font-semibold outline-none'>
           {workspaceName}
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className='h-4 w-4' />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-52" align="start">
+        <DropdownMenuContent className='w-52' align='start'>
           <DropdownMenuItem onSelect={() => setIsEditing(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+            <Pencil className='mr-2 h-4 w-4' />
             Rename
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handleCopyInviteLink}>
-            <Copy className="mr-2 h-4 w-4" />
+            <Copy className='mr-2 h-4 w-4' />
             Copy invite link
           </DropdownMenuItem>
         </DropdownMenuContent>

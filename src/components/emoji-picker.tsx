@@ -1,31 +1,31 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { cn } from '@/lib/utils';
 import { emojiSearch } from '@/utils/emoji';
 import data, { EmojiData } from '@emoji-mart/data';
+import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 import { throttle } from 'lodash';
-import { Emoji } from "./emoji";
+import {
+  Apple,
+  Car,
+  Dog,
+  Dumbbell,
+  Flag,
+  Hash,
+  Lightbulb,
+  Smile,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Emoji } from './emoji';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { SearchBar } from './ui/search-bar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { cn } from '@/lib/utils';
-import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 import {
-  Smile,
-  Dog,
-  Apple,
-  Dumbbell,
-  Car,
-  Lightbulb,
-  Hash,
-  Flag,
-} from 'lucide-react';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 /** Max number of rows shown at once */
 const MAX_ROWS = 30;
@@ -61,32 +61,50 @@ const CATEGORY_POSITIONS = (() => {
 /** Get category icon */
 function getCategoryIcon(category: string, className?: string) {
   const props = { className: cn('h-4 w-4', className) };
-  
+
   switch (category) {
-    case 'people': return <Smile {...props} />;
-    case 'nature': return <Dog {...props} />;
-    case 'foods': return <Apple {...props} />;
-    case 'activity': return <Dumbbell {...props} />;
-    case 'places': return <Car {...props} />;
-    case 'objects': return <Lightbulb {...props} />;
-    case 'symbols': return <Hash {...props} />;
-    case 'flags': return <Flag {...props} />;
-    default: return null;
+    case 'people':
+      return <Smile {...props} />;
+    case 'nature':
+      return <Dog {...props} />;
+    case 'foods':
+      return <Apple {...props} />;
+    case 'activity':
+      return <Dumbbell {...props} />;
+    case 'places':
+      return <Car {...props} />;
+    case 'objects':
+      return <Lightbulb {...props} />;
+    case 'symbols':
+      return <Hash {...props} />;
+    case 'flags':
+      return <Flag {...props} />;
+    default:
+      return null;
   }
 }
 
 /** Get category label */
 function getCategoryLabel(category: string) {
   switch (category) {
-    case 'people': return 'Smileys & People';
-    case 'nature': return 'Animals & Nature';
-    case 'foods': return 'Food & Drink';
-    case 'activity': return 'Activities';
-    case 'places': return 'Travel & Places';
-    case 'objects': return 'Objects';
-    case 'symbols': return 'Symbols';
-    case 'flags': return 'Flags';
-    default: return category;
+    case 'people':
+      return 'Smileys & People';
+    case 'nature':
+      return 'Animals & Nature';
+    case 'foods':
+      return 'Food & Drink';
+    case 'activity':
+      return 'Activities';
+    case 'places':
+      return 'Travel & Places';
+    case 'objects':
+      return 'Objects';
+    case 'symbols':
+      return 'Symbols';
+    case 'flags':
+      return 'Flags';
+    default:
+      return category;
   }
 }
 
@@ -98,14 +116,20 @@ interface EmojiButtonProps {
   onClick?: () => void;
 }
 
-function EmojiButton({ id, skin, size, setHovered, onClick }: EmojiButtonProps) {
+function EmojiButton({
+  id,
+  skin,
+  size,
+  setHovered,
+  onClick,
+}: EmojiButtonProps) {
   return (
     <Button
-      variant="ghost"
-      size="icon"
+      variant='ghost'
+      size='icon'
       className={cn(
         'h-[38px] w-[38px] p-1.5',
-        'hover:bg-accent hover:text-accent-foreground'
+        'hover:bg-accent hover:text-accent-foreground',
       )}
       onMouseEnter={() => setHovered?.(id)}
       onClick={onClick}
@@ -132,32 +156,36 @@ export function EmojiPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [skin, setSkin] = useState('0');
-  const [activeCategory, setActiveCategory] = useState(data.categories[0]?.id || '');
+  const [activeCategory, setActiveCategory] = useState(
+    data.categories[0]?.id || '',
+  );
   const [hovered, setHovered] = useState<string | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
 
   // Get the currently hovered emoji
-  const hoveredEmoji = useMemo(() => 
-    hovered ? emojiSearch.get(hovered) : null
-  , [hovered]);
+  const hoveredEmoji = useMemo(
+    () => (hovered ? emojiSearch.get(hovered) : null),
+    [hovered],
+  );
 
   // Get all emojis to display
   const emojis = useMemo(() => {
     if (search) {
       const query = search.toLowerCase().replace(/\s+/g, '_');
       return Object.values(data.emojis)
-        .filter(emoji => 
-          emoji.id.includes(query) ||
-          emoji.keywords.some(kw => kw.includes(query)) ||
-          emoji.name.toLowerCase().replace(/\s+/g, '_').includes(query)
+        .filter(
+          (emoji) =>
+            emoji.id.includes(query) ||
+            emoji.keywords.some((kw) => kw.includes(query)) ||
+            emoji.name.toLowerCase().replace(/\s+/g, '_').includes(query),
         )
         .slice(0, MAX_ROWS)
-        .map(emoji => emoji.id);
+        .map((emoji) => emoji.id);
     }
 
     return data.categories.flatMap((category) => [
       `category-${category.id}`,
-      ...category.emojis
+      ...category.emojis,
     ]);
   }, [search]);
 
@@ -169,7 +197,9 @@ export function EmojiPicker({
   const rowVirtualizer = useVirtualizer({
     count: numRows,
     getScrollElement: () => {
-      const viewport = containerRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      const viewport = containerRef.current?.querySelector(
+        '[data-radix-scroll-area-viewport]',
+      );
       return viewport as HTMLElement | null;
     },
     estimateSize: useCallback(() => 38, []), // Height of each row
@@ -179,8 +209,10 @@ export function EmojiPicker({
   // Handle scroll to update active category
   const handleScroll = useCallback(() => {
     if (!containerRef.current || search) return;
-    
-    const viewport = containerRef.current.querySelector('[data-radix-scroll-area-viewport]');
+
+    const viewport = containerRef.current.querySelector(
+      '[data-radix-scroll-area-viewport]',
+    );
     if (!viewport) return;
 
     const scrollTop = viewport.scrollTop;
@@ -205,8 +237,12 @@ export function EmojiPicker({
 
   // Throttle scroll updates
   const throttledScroll = useMemo(
-    () => throttle(() => setIsScrolling(true), 150, { leading: true, trailing: false }),
-    []
+    () =>
+      throttle(() => setIsScrolling(true), 150, {
+        leading: true,
+        trailing: false,
+      }),
+    [],
   );
 
   // Handle scroll events
@@ -227,52 +263,61 @@ export function EmojiPicker({
   }, [isScrolling]);
 
   // Handle category change
-  const handleCategoryChange = useCallback((categoryId: string) => {
-    if (!containerRef.current || search) return;
-    
-    const viewport = containerRef.current.querySelector('[data-radix-scroll-area-viewport]');
-    if (!viewport) return;
+  const handleCategoryChange = useCallback(
+    (categoryId: string) => {
+      if (!containerRef.current || search) return;
 
-    const position = CATEGORY_POSITIONS[categoryId];
-    if (!position) return;
+      const viewport = containerRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]',
+      );
+      if (!viewport) return;
 
-    // Get category index for extra offset
-    const categoryIndex = data.categories.findIndex(c => c.id === categoryId);
-    const extraOffset = categoryIndex * 35;
+      const position = CATEGORY_POSITIONS[categoryId];
+      if (!position) return;
 
-    setActiveCategory(categoryId);
-    setIsScrolling(true);
+      // Get category index for extra offset
+      const categoryIndex = data.categories.findIndex(
+        (c) => c.id === categoryId,
+      );
+      const extraOffset = categoryIndex * 35;
 
-    viewport.scrollTo({
-      top: position.row * 38 + extraOffset,
-    });
-  }, [search]);
+      setActiveCategory(categoryId);
+      setIsScrolling(true);
+
+      viewport.scrollTo({
+        top: position.row * 38 + extraOffset,
+      });
+    },
+    [search],
+  );
 
   return (
-    <div className="flex w-[352px] flex-col gap-4">
-      <div className="flex gap-2 w-full">
-        <div className="flex-grow">
+    <div className='flex w-[352px] flex-col gap-4'>
+      <div className='flex gap-2 w-full'>
+        <div className='flex-grow'>
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search emojis..."
+            placeholder='Search emojis...'
           />
         </div>
         <Select value={skin} onValueChange={setSkin}>
-          <SelectTrigger className="w-[60px]">
+          <SelectTrigger className='w-[60px]'>
             <SelectValue>
               <div
-                className="h-4 w-4 rounded-full"
-                style={{ backgroundColor: SKIN_TONES[parseInt(skin) ?? 0]?.color }}
+                className='h-4 w-4 rounded-full'
+                style={{
+                  backgroundColor: SKIN_TONES[parseInt(skin) ?? 0]?.color,
+                }}
               />
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {SKIN_TONES.map((tone) => (
               <SelectItem key={tone.value} value={tone.value}>
-                <div className="flex items-center gap-2">
+                <div className='flex items-center gap-2'>
                   <div
-                    className="h-4 w-4 rounded-full"
+                    className='h-4 w-4 rounded-full'
                     style={{ backgroundColor: tone.color }}
                   />
                   <span>{tone.label}</span>
@@ -284,12 +329,12 @@ export function EmojiPicker({
       </div>
 
       <Tabs value={activeCategory} onValueChange={handleCategoryChange}>
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className='grid w-full grid-cols-8'>
           {data.categories.map((category) => (
             <TabsTrigger
               key={category.id}
               value={category.id}
-              className="px-2 py-1.5"
+              className='px-2 py-1.5'
               title={getCategoryLabel(category.id)}
             >
               {getCategoryIcon(category.id)}
@@ -300,7 +345,7 @@ export function EmojiPicker({
 
       <ScrollArea
         ref={containerRef}
-        className="h-[350px]"
+        className='h-[350px]'
         onScrollCapture={onScroll}
       >
         <div
@@ -321,7 +366,7 @@ export function EmojiPicker({
                 ref={rowVirtualizer.measureElement}
                 className={cn(
                   'absolute top-0 left-0 right-0 grid grid-cols-8 gap-0.5 px-1',
-                  'will-change-transform'
+                  'will-change-transform',
                 )}
                 style={{
                   transform: `translateY(${virtualRow.start}px)`,
@@ -335,7 +380,7 @@ export function EmojiPicker({
                       <div
                         key={id}
                         data-category={categoryId}
-                        className="col-span-8 px-2 py-1 text-sm font-medium text-foreground/70"
+                        className='col-span-8 px-2 py-1 text-sm font-medium text-foreground/70'
                       >
                         {getCategoryLabel(categoryId)}
                       </div>
@@ -362,19 +407,21 @@ export function EmojiPicker({
         </div>
       </ScrollArea>
 
-      <div className="flex h-[48px] items-center gap-2 border-t pt-3">
+      <div className='flex h-[48px] items-center gap-2 border-t pt-3'>
         {hoveredEmoji ? (
           <>
-            <Emoji id={hoveredEmoji.id} skin={parseInt(skin) + 1} size="32px" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{hoveredEmoji.name}</span>
-              <span className="text-xs text-muted-foreground">:{hoveredEmoji.id}:</span>
+            <Emoji id={hoveredEmoji.id} skin={parseInt(skin) + 1} size='32px' />
+            <div className='flex flex-col'>
+              <span className='text-sm font-medium'>{hoveredEmoji.name}</span>
+              <span className='text-xs text-muted-foreground'>
+                :{hoveredEmoji.id}:
+              </span>
             </div>
           </>
         ) : (
           <>
-            <Emoji id="grinning" skin={parseInt(skin) + 1} size="32px" />
-            <span className="text-sm text-muted-foreground">
+            <Emoji id='grinning' skin={parseInt(skin) + 1} size='32px' />
+            <span className='text-sm text-muted-foreground'>
               Pick an emoji...
             </span>
           </>

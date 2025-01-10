@@ -1,19 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import MessageView from '@/components/message-view';
 import MessageList from '@/components/message-view/message-list';
 import { Button } from '@/components/ui/button';
 import { ChannelProvider, useChannel } from '@/contexts/channel-context';
 import { useWorkspace } from '@/contexts/workspace-context';
-import {
-  FullMessage
-} from '@/types/message';
+import { api } from '@/trpc/react';
+import { FullMessage } from '@/types/message';
 import { useUser } from '@clerk/nextjs';
 import { Channel, Message } from '@prisma/client';
-import { Bookmark, Loader2, PinIcon, X } from 'lucide-react';
+import { Loader2, PinIcon, X } from 'lucide-react';
+import { useState } from 'react';
 import { UserAvatar } from './user-avatar';
-import { api } from '@/trpc/react';
 
 interface ThreadViewProps {
   threadId: string;
@@ -57,7 +55,9 @@ interface PinnedMessagesViewProps {
 }
 
 function PinnedMessagesView({ channelId, onClose }: PinnedMessagesViewProps) {
-  const { data: pinnedMessages, isLoading } = api.message.getPinned.useQuery({ channelId });
+  const { data: pinnedMessages, isLoading } = api.message.getPinned.useQuery({
+    channelId,
+  });
 
   return (
     <div className='flex h-full w-[400px] flex-col border-l xl:w-[500px]'>
@@ -110,7 +110,10 @@ function ChannelViewContent(props: { channel: Channel }) {
 
                   return (
                     <div className='flex items-center'>
-                      <UserAvatar user={otherUser ?? null} className='h-8 w-8' />
+                      <UserAvatar
+                        user={otherUser ?? null}
+                        className='h-8 w-8'
+                      />
                       <span className='ml-2 font-semibold'>
                         {otherUser?.firstName
                           ? `${otherUser.firstName} ${otherUser.lastName}`

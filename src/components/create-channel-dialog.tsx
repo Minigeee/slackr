@@ -1,7 +1,13 @@
-import { useMemo, useState } from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useWorkspace } from '@/contexts/workspace-context';
+import { api } from '@/trpc/react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Channel } from '@prisma/client';
+import { Loader2Icon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Button } from './ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,17 +15,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Label } from './ui/label';
 import { Input } from './ui/input';
-import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { SearchBar } from './ui/search-bar';
-import { Channel } from '@prisma/client';
 import { Separator } from './ui/separator';
-import { api } from '@/trpc/react';
-import { useRouter } from 'next/navigation';
-import { Loader2, Loader2Icon } from 'lucide-react';
-import { useWorkspace } from '@/contexts/workspace-context';
 
 const createChannelSchema = z.object({
   mode: z.enum(['create', 'join']),
@@ -66,7 +66,7 @@ export function CreateChannelDialog({
       await refetchWorkspace();
     },
   });
-  
+
   const joinChannel = api.channel.join.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -231,9 +231,8 @@ export function CreateChannelDialog({
             <Button
               type='submit'
               disabled={
-                loading || (mode === 'create'
-                  ? !channelName
-                  : !selectedChannelId)
+                loading ||
+                (mode === 'create' ? !channelName : !selectedChannelId)
               }
             >
               {loading && <Loader2Icon className='mr-2 h-4 w-4 animate-spin' />}

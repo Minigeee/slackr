@@ -1,6 +1,6 @@
-import { User } from '@/types/user';
-import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { cn } from '@/lib/utils';
+import { User } from '@/types/user';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const statusColorMap = {
   online: 'bg-green-500',
@@ -17,9 +17,14 @@ interface UserAvatarProps {
   showStatus?: boolean;
 }
 
-export function UserAvatar({ user, className, showStatus = true, indicatorClassName }: UserAvatarProps) {
+export function UserAvatar({
+  user,
+  className,
+  showStatus = true,
+  indicatorClassName,
+}: UserAvatarProps) {
   return (
-    <div className="relative">
+    <div className='relative'>
       <Avatar className={className}>
         <AvatarImage src={user?.profilePicture} />
         <AvatarFallback>
@@ -31,10 +36,10 @@ export function UserAvatar({ user, className, showStatus = true, indicatorClassN
           className={cn(
             'absolute bottom-0 right-0 h-2 w-2 rounded-full ring-1 ring-border',
             statusColorMap[user?.status ?? 'offline'],
-            indicatorClassName
+            indicatorClassName,
           )}
         />
       )}
     </div>
   );
-} 
+}

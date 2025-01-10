@@ -1,14 +1,18 @@
 'use client';
 
-import { Search, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { api } from '@/trpc/react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { SearchBar } from '@/components/ui/search-bar';
-import { useState, useRef, useMemo } from 'react';
 import { useWorkspace } from '@/contexts/workspace-context';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type { Message, Channel } from '@prisma/client';
+import { api } from '@/trpc/react';
 import type { User } from '@/types/user';
+import type { Channel, Message } from '@prisma/client';
+import { Loader2, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useRef, useState } from 'react';
 
 interface MessageWithUser extends Message {
   user?: User;
@@ -36,8 +40,8 @@ export function SearchDropdown() {
 
   const messagesWithChannel = useMemo(() => {
     if (!searchResults?.items) return [];
-    const channelMap = new Map(workspace.joinedChannels.map(c => [c.id, c]));
-    return searchResults.items.map(message => ({
+    const channelMap = new Map(workspace.joinedChannels.map((c) => [c.id, c]));
+    return searchResults.items.map((message) => ({
       ...message,
       channel: channelMap.get(message.channelId),
     }));
@@ -70,8 +74,8 @@ export function SearchDropdown() {
           />
         </div>
       </PopoverTrigger>
-      <PopoverContent 
-        className='w-[512px] p-0' 
+      <PopoverContent
+        className='w-[512px] p-0'
         align='start'
         sideOffset={8}
         onInteractOutside={(e) => {
@@ -130,21 +134,29 @@ export function SearchDropdown() {
                         {new Date(message.createdAt).toLocaleDateString()}
                       </span>
                       <span className='text-xs text-muted-foreground'>
-                        in {message.channel?.type === 'dm' ? 'Direct Message' : `#${message.channel?.name}`}
+                        in{' '}
+                        {message.channel?.type === 'dm'
+                          ? 'Direct Message'
+                          : `#${message.channel?.name}`}
                       </span>
                     </div>
-                    <p className='line-clamp-1 text-sm text-muted-foreground' dangerouslySetInnerHTML={{ __html: message.content }} />
+                    <p
+                      className='line-clamp-1 text-sm text-muted-foreground'
+                      dangerouslySetInnerHTML={{ __html: message.content }}
+                    />
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {(!searchResults?.items || searchResults.items.length === 0) && query && !isLoading && (
-            <div className='py-6 text-center text-sm text-muted-foreground'>
-              No results found.
-            </div>
-          )}
+          {(!searchResults?.items || searchResults.items.length === 0) &&
+            query &&
+            !isLoading && (
+              <div className='py-6 text-center text-sm text-muted-foreground'>
+                No results found.
+              </div>
+            )}
         </div>
       </PopoverContent>
     </Popover>

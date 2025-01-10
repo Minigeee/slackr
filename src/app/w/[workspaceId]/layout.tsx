@@ -1,10 +1,10 @@
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import { RedirectToSignIn, SignedIn, SignedOut } from '@clerk/nextjs';
-import { currentUser, clerkClient } from '@clerk/nextjs/server';
-import { WorkspaceProvider } from '@/contexts/workspace-context';
 import { SearchDropdown } from '@/components/search/search-dropdown';
+import WorkspaceSidebar from '@/components/workspace-sidebar';
+import { WorkspaceProvider } from '@/contexts/workspace-context';
 import { db } from '@/server/db';
 import { User } from '@/types/user';
+import { RedirectToSignIn, SignedIn, SignedOut } from '@clerk/nextjs';
+import { clerkClient, currentUser } from '@clerk/nextjs/server';
 import Link from 'next/link';
 
 async function getWorkspaceData(workspaceId: string, userId: string) {

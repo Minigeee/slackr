@@ -1,15 +1,3 @@
-import { Channel, Workspace } from '@prisma/client';
-import Link from 'next/link';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import { Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { api } from '@/trpc/react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -18,6 +6,18 @@ import {
   AlertDialogTitle,
   DefaultAlertDialogFooter,
 } from '@/components/ui/alert-dialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Input } from '@/components/ui/input';
+import { api } from '@/trpc/react';
+import { Channel, Workspace } from '@prisma/client';
+import { Pencil, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface ChannelButtonProps {
   /** Channel */
@@ -69,7 +69,7 @@ export function ChannelButton(props: ChannelButtonProps) {
 
   if (isEditing) {
     return (
-      <form onSubmit={handleRename} className="px-2">
+      <form onSubmit={handleRename} className='px-2'>
         <Input
           value={channelName}
           onChange={(e) => setChannelName(e.target.value)}
@@ -79,7 +79,7 @@ export function ChannelButton(props: ChannelButtonProps) {
           }}
           onKeyDown={handleKeyDown}
           autoFocus
-          className="h-8"
+          className='h-8'
         />
       </form>
     );
@@ -99,16 +99,16 @@ export function ChannelButton(props: ChannelButtonProps) {
             # {channelName}
           </Link>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
+        <ContextMenuContent className='w-52'>
           <ContextMenuItem onSelect={() => setIsEditing(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+            <Pencil className='mr-2 h-4 w-4' />
             Rename
           </ContextMenuItem>
           <ContextMenuItem
             onSelect={() => setIsDeleteDialogOpen(true)}
-            className="text-red-600"
+            className='text-red-600'
           >
-            <Trash2 className="mr-2 h-4 w-4" />
+            <Trash2 className='mr-2 h-4 w-4' />
             Delete
           </ContextMenuItem>
         </ContextMenuContent>
@@ -127,8 +127,8 @@ export function ChannelButton(props: ChannelButtonProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <DefaultAlertDialogFooter
-            actionLabel="Delete"
-            actionVariant="destructive"
+            actionLabel='Delete'
+            actionVariant='destructive'
             onAction={handleDelete}
             onOpenChange={setIsDeleteDialogOpen}
           />

@@ -1,4 +1,4 @@
-import { FullMessage, type MessageWithUser } from '@/types/message';
+import { FullMessage } from '@/types/message';
 import dayjs from 'dayjs';
 import calendar from 'dayjs/plugin/calendar';
 import { Message } from './message';

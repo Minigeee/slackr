@@ -1,8 +1,8 @@
-import { api } from '@/trpc/server';
-import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
-import { cache } from 'react';
 import { WorkspaceForm } from '@/components/workspace-form';
+import { api } from '@/trpc/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { cache } from 'react';
 
 const getWorkspaces = cache(() => {
   return api.workspace.getAll();

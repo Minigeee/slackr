@@ -10,4 +10,4 @@ export const emoji = Noto_Color_Emoji({
   display: 'swap',
   subsets: ['emoji'],
   preload: true,
-}); 
+});

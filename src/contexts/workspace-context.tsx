@@ -1,21 +1,21 @@
 'use client';
 
+import { api } from '@/trpc/react';
 import { User, UserStatus } from '@/types/user';
+import { EVENTS, pusherClient } from '@/utils/pusher';
+import { useUser } from '@clerk/nextjs';
 import { Channel, Workspace } from '@prisma/client';
 import {
   createContext,
-  useContext,
+  Dispatch,
   ReactNode,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
   useMemo,
   useState,
-  useCallback,
-  Dispatch,
-  SetStateAction,
-  useEffect,
 } from 'react';
-import { api } from '@/trpc/react';
-import { useUser } from '@clerk/nextjs';
-import { pusherClient, EVENTS } from '@/utils/pusher';
 
 interface WorkspaceContextType {
   workspace: Workspace | null;
@@ -24,7 +24,10 @@ interface WorkspaceContextType {
   members: Record<string, User>;
   isLoading: boolean;
   refetchWorkspace: () => Promise<void>;
-  setStatus: (status: UserStatus, statusMessage?: string | null) => Promise<void>;
+  setStatus: (
+    status: UserStatus,
+    statusMessage?: string | null,
+  ) => Promise<void>;
   _mutators: {
     setMembers: Dispatch<SetStateAction<Record<string, User>>>;
     setJoinedChannels: Dispatch<SetStateAction<Channel[]>>;
@@ -102,7 +105,9 @@ export function WorkspaceProvider({
   }, [props.members]);
 
   const [members, setMembers] = useState<Record<string, User>>(initialMembers);
-  const [joinedChannels, setJoinedChannels] = useState<Channel[]>(initialJoinedChannels);
+  const [joinedChannels, setJoinedChannels] = useState<Channel[]>(
+    initialJoinedChannels,
+  );
 
   // Subscribe to presence channel and status changes
   useEffect(() => {
@@ -160,20 +165,27 @@ export function WorkspaceProvider({
     });
 
     // Add status change listener
-    channel.bind(EVENTS.STATUS_CHANGED, (data: { userId: string; status: UserStatus; statusMessage: string | null }) => {
-      setMembers((prev) => {
-        if (!prev[data.userId]) return prev;
-        return {
-          ...prev,
-          [data.userId]: {
-            ...prev[data.userId],
-            status: data.status,
-            statusMessage: data.statusMessage,
-            lastSeen: new Date(),
-          } as User,
-        };
-      });
-    });
+    channel.bind(
+      EVENTS.STATUS_CHANGED,
+      (data: {
+        userId: string;
+        status: UserStatus;
+        statusMessage: string | null;
+      }) => {
+        setMembers((prev) => {
+          if (!prev[data.userId]) return prev;
+          return {
+            ...prev,
+            [data.userId]: {
+              ...prev[data.userId],
+              status: data.status,
+              statusMessage: data.statusMessage,
+              lastSeen: new Date(),
+            } as User,
+          };
+        });
+      },
+    );
 
     return () => {
       channel.unsubscribe();
@@ -193,27 +205,30 @@ export function WorkspaceProvider({
     });
   }, []);
 
-  const setStatus = useCallback(async (status: UserStatus, statusMessage?: string | null) => {
-    if (!workspaceId || !user) return;
+  const setStatus = useCallback(
+    async (status: UserStatus, statusMessage?: string | null) => {
+      if (!workspaceId || !user) return;
 
-    // Update local state optimistically
-    setMembers((prev) => ({
-      ...prev,
-      [user.id]: {
-        ...prev[user.id],
-        status,
-        statusMessage: statusMessage ?? prev[user.id]?.statusMessage,
-        lastSeen: new Date(),
-      } as User,
-    }));
+      // Update local state optimistically
+      setMembers((prev) => ({
+        ...prev,
+        [user.id]: {
+          ...prev[user.id],
+          status,
+          statusMessage: statusMessage ?? prev[user.id]?.statusMessage,
+          lastSeen: new Date(),
+        } as User,
+      }));
 
-    // Make the API call
-    await updateStatus.mutateAsync({
-      workspaceId,
-      status: status as any,
-      statusMessage,
-    });
-  }, [workspaceId, user, updateStatus]);
+      // Make the API call
+      await updateStatus.mutateAsync({
+        workspaceId,
+        status: status as any,
+        statusMessage,
+      });
+    },
+    [workspaceId, user, updateStatus],
+  );
 
   const isLoading = !workspaceData || !channelsData;
 
@@ -247,4 +262,3 @@ export function useWorkspace() {
   }
   return context;
 }
-

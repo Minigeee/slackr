@@ -31,16 +31,21 @@ export const emojiSearch = {
     const fromAliases = data.aliases[emojiId];
     const fromNative = _nativeToId[emojiId];
 
-    return data.emojis[emojiId] || 
-           (fromAliases ? data.emojis[fromAliases] : undefined) ||
-           (fromNative ? data.emojis[fromNative] : undefined);
+    return (
+      data.emojis[emojiId] ||
+      (fromAliases ? data.emojis[fromAliases] : undefined) ||
+      (fromNative ? data.emojis[fromNative] : undefined)
+    );
   },
 
   reset: () => {
     Pool = null;
   },
 
-  search: (value: string, { maxResults = 90, caller }: SearchOptions = {}): EmojiData[] | undefined => {
+  search: (
+    value: string,
+    { maxResults = 90, caller }: SearchOptions = {},
+  ): EmojiData[] | undefined => {
     if (!value || !value.trim().length) return undefined;
 
     const values = value
@@ -69,7 +74,8 @@ export const emojiSearch = {
         if (score === -1) continue;
 
         results.push(emoji);
-        scores[emoji.id] = (scores[emoji.id] || 0) + (emoji.id === value ? 0 : score + 1);
+        scores[emoji.id] =
+          (scores[emoji.id] || 0) + (emoji.id === value ? 0 : score + 1);
       }
 
       pool = results;

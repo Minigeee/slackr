@@ -1,7 +1,6 @@
-import data from '@emoji-mart/data';
-import { emojiSearch } from '@/utils/emoji';
-import { EmojiData } from '@emoji-mart/data';
 import { cn } from '@/lib/utils';
+import { emojiSearch } from '@/utils/emoji';
+import data, { EmojiData } from '@emoji-mart/data';
 
 type EmojiProps = {
   fallback?: string;
@@ -69,7 +68,7 @@ export function Emoji(props: EmojiProps) {
           }}
           alt={emojiSkin?.native || emojiSkin?.shortcodes}
           src={imageSrc}
-          loading="lazy"
+          loading='lazy'
         />
       ) : set == 'native' ? (
         <span

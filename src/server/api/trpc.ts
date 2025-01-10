@@ -6,11 +6,10 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from '@trpc/server';
+import { currentUser } from '@clerk/nextjs/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { ZodError } from 'zod';
-import { currentUser } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
 
 import { db } from '@/server/db';
 
@@ -118,17 +117,19 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * If you want a query or mutation to ONLY be accessible to logged in users, use this.
  * It verifies the session is valid and guarantees `ctx.auth.userId` is non-null.
  */
-export const protectedProcedure = t.procedure.use(
-  t.middleware(({ ctx, next }) => {
-    if (!ctx.auth?.userId) {
-      console.log(ctx.auth)
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    return next({
-      ctx: {
-        ...ctx,
-        auth: { userId: ctx.auth.userId },
-      },
-    });
-  })
-).use(timingMiddleware);
+export const protectedProcedure = t.procedure
+  .use(
+    t.middleware(({ ctx, next }) => {
+      if (!ctx.auth?.userId) {
+        console.log(ctx.auth);
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      return next({
+        ctx: {
+          ...ctx,
+          auth: { userId: ctx.auth.userId },
+        },
+      });
+    }),
+  )
+  .use(timingMiddleware);
