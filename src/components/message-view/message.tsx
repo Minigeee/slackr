@@ -41,6 +41,7 @@ import {
   Plus,
   PinIcon,
   PinOffIcon,
+  PlusIcon,
 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useUser } from '@clerk/nextjs';
@@ -361,7 +362,7 @@ const MessageContextMenu = ({ message, children, onReply, onEdit }: MessageConte
               <Smile className='mr-2 h-4 w-4' />
               Add reaction
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="p-0">
+            <ContextMenuSubContent className="p-4">
               <EmojiPicker onSelect={handleEmojiSelect} />
             </ContextMenuSubContent>
           </ContextMenuSub>
@@ -518,6 +519,16 @@ const MessageNoMemo = ({ message, onReply }: MessageProps) => {
                     onToggle={() => toggleReaction(message.id, emoji)}
                   />
                 ))}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant='ghost' size='icon' className='h-6 w-6 rounded-full'>
+                      <PlusIcon className='h-4 w-4' />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side='right' align='end' className='w-fit p-4'>
+                    <EmojiPicker onSelect={(emoji) => toggleReaction(message.id, emoji.id)} />
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
             {threadInfo && (

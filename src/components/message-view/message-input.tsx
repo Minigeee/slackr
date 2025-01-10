@@ -346,7 +346,7 @@ const MessageInput = ({ onSend, threadId, replyTo, onCancelReply }: MessageInput
             <PopoverContent
               side="top"
               align="start"
-              className="w-full p-0"
+              className="w-full p-4"
             >
               <EmojiPicker onSelect={handleEmojiSelect} />
             </PopoverContent>

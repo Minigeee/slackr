@@ -249,7 +249,7 @@ export function EmojiPicker({
   }, [search]);
 
   return (
-    <div className="flex w-[352px] flex-col gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-md">
+    <div className="flex w-[352px] flex-col gap-4">
       <div className="flex gap-2 w-full">
         <div className="flex-grow">
           <SearchBar
