@@ -1,3 +1,4 @@
+import Assistant from '@/components/search/assistant';
 import { SearchDropdown } from '@/components/search/search-dropdown';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { WorkspaceProvider } from '@/contexts/workspace-context';
@@ -99,8 +100,9 @@ export default async function Layout({
               <Link href='/' className='text-purple-50 font-bold text-2xl'>
                 Slackr
               </Link>
-              <div className='flex-1 flex justify-center'>
+              <div className='flex-1 flex justify-center gap-1'>
                 <SearchDropdown />
+                <Assistant />
               </div>
             </div>
             <div className='flex w-full h-[calc(100vh-50px)]'>

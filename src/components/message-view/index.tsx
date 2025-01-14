@@ -36,7 +36,7 @@ const MessageView = (props: MessageViewProps) => {
     });
   }, [props.messages, props.threadId]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
         '[data-radix-scroll-area-viewport]',
@@ -45,9 +45,9 @@ const MessageView = (props: MessageViewProps) => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  };
+  }, [scrollAreaRef]);
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
         '[data-radix-scroll-area-viewport]',
@@ -58,7 +58,7 @@ const MessageView = (props: MessageViewProps) => {
         setShowScrollButton(!isNearBottom);
       }
     }
-  };
+  }, [scrollAreaRef]);
 
   // Setup scroll event listener
   useEffect(() => {
@@ -69,7 +69,7 @@ const MessageView = (props: MessageViewProps) => {
       scrollContainer.addEventListener('scroll', handleScroll);
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }
-  }, []);
+  }, [handleScroll]);
 
   // Scroll to bottom on initial load and when messages change
   useEffect(() => {

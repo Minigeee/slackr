@@ -29,6 +29,12 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: z.string().min(1),
     AWS_SECRET_ACCESS_KEY: z.string().min(1),
     AWS_BUCKET_NAME: z.string().min(1),
+    // Add Pinecone server-side variables
+    PINECONE_INDEX: z.string().min(1),
+    PINECONE_API_KEY: z.string().min(1),
+    PINECONE_EMBEDDING_MODEL: z.string().min(1),
+    // Add OpenAI server-side variables
+    OPENAI_API_KEY: z.string().min(1),
   },
 
   /**
@@ -66,6 +72,12 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     AWS_BUCKET_NAME: process.env.AWS_BUCKET_NAME,
+    // Pinecone
+    PINECONE_INDEX: process.env.PINECONE_INDEX,
+    PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+    PINECONE_EMBEDDING_MODEL: process.env.PINECONE_EMBEDDING_MODEL,
+    // OpenAI
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
