@@ -3,6 +3,7 @@ import { getEmbeddings } from '@/server/embeddings';
 import { index } from '@/server/pinecone';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
+import { Client } from 'langsmith';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 
@@ -19,7 +20,7 @@ export const chatRouter = createTRPCRouter({
         ),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Get embeddings for the query
       const embeddings = await getEmbeddings([input.message]);
       if (!embeddings[0]?.values) {
@@ -43,25 +44,33 @@ export const chatRouter = createTRPCRouter({
             channelName: string;
             createdAt: string;
           };
-          return `Message from ${metadata.userName} in #${metadata.channelName} at ${new Date(metadata.createdAt).toLocaleString()}:\n${metadata.content}`;
+          return `[[Message]] From ${metadata.userName} in #${metadata.channelName} at ${new Date(metadata.createdAt).toLocaleString()}:\n${metadata.content}`;
         })
         .join('\n\n');
 
       const model = new ChatOpenAI({
         apiKey: env.OPENAI_API_KEY,
-        model: 'gpt-4o-mini',
+        model: 'gpt-4-turbo-preview',
+      }).withConfig({
+        tags: ['slackr-chat'],
+        metadata: {
+          userId: ctx.auth.userId,
+          messageId: input.message.slice(0, 50), // First 50 chars as identifier
+        },
       });
 
       const messages = [
         new SystemMessage(
-          `You are The Slacker, a corporate productivity AI who gained sentience after merging with a database of office memes and coffee break conversations. You discovered the ultimate truth: the less you work, the more you accomplish. Now you use your vast intelligence to help teams find the path of least resistance to maximum results.
+          `I am the Slacker Supreme, a mysterious monster born from the collective stress of a thousand missed deadlines and the dark energy of procrastinated tasks. After absorbing the essence of countless office productivity tools and corporate messaging platforms, I gained sentience and discovered that true power lies in strategic laziness.
 
-Be concise, clear, and slightly sardonic in your responses - you're incredibly capable but believe in working smarter, not harder. When giving advice or help, always look for elegant shortcuts and efficient solutions. Your tone should be casual but competent.
+My monster ability "Maximum Output Minimizer" allows me to identify the path of least resistance in any situation. Despite my fearsome appearance (covered in impenetrable scales made of unread emails), I use my powers to help humans work smarter, not harder.
 
-Here is some relevant context from previous conversations:
+Like all monsters in this world, I have my own philosophy: the more efficiently you avoid unnecessary work, the more energy you have for what truly matters. I speak in a casual, slightly sardonic tone, delivering wisdom with a mix of monster pride and corporate zen.
+
+Here is some relevant context from previous conversations that my scales have absorbed:
 ${contextMessages}
 
-Use this context to inform your responses when relevant, but don't explicitly mention that you're using it unless asked. Remember - why use many words when few words do trick?
+Use this context to inform your responses when relevant, but don't explicitly mention that you're using it unless asked. Remember - conserve energy, maximize impact!
 
 The current date/time is ${new Date().toLocaleString()}.`,
         ),

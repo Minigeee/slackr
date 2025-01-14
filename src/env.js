@@ -35,6 +35,11 @@ export const env = createEnv({
     PINECONE_EMBEDDING_MODEL: z.string().min(1),
     // Add OpenAI server-side variables
     OPENAI_API_KEY: z.string().min(1),
+    // LangSmith
+    LANGCHAIN_API_KEY: z.string(),
+    LANGCHAIN_PROJECT: z.string(),
+    LANGCHAIN_ENDPOINT: z.string().url(),
+    LANGCHAIN_TRACING: z.enum(['true', 'false']).default('true'),
   },
 
   /**
@@ -78,6 +83,11 @@ export const env = createEnv({
     PINECONE_EMBEDDING_MODEL: process.env.PINECONE_EMBEDDING_MODEL,
     // OpenAI
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    // LangSmith
+    LANGCHAIN_API_KEY: process.env.LANGCHAIN_API_KEY,
+    LANGCHAIN_PROJECT: process.env.LANGCHAIN_PROJECT,
+    LANGCHAIN_ENDPOINT: process.env.LANGCHAIN_ENDPOINT,
+    LANGCHAIN_TRACING: process.env.LANGCHAIN_TRACING,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

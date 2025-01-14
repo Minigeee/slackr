@@ -50,7 +50,6 @@ function MemberContextMenu({
 
 export default function WorkspaceSidebar() {
   const { user } = useUser();
-  const { signOut } = useClerk();
   const params = useParams();
   const channelId = params.channelId as string;
   const router = useRouter();
@@ -79,7 +78,7 @@ export default function WorkspaceSidebar() {
 
   if (!workspace || !user) {
     return (
-      <div className='flex h-full w-64 flex-col border-r bg-background'>
+      <div className='flex h-full w-full flex-col bg-indigo-50'>
         <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
           <div className='h-4 w-32 animate-pulse rounded bg-muted'></div>
         </div>
@@ -124,7 +123,7 @@ export default function WorkspaceSidebar() {
   };
 
   return (
-    <div className='flex h-full w-64 flex-col border-r bg-indigo-50'>
+    <div className='flex w-full h-full flex-col bg-indigo-50'>
       {/* Workspace Header */}
       <WorkspaceHeader workspace={workspace} />
 

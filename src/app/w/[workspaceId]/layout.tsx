@@ -1,12 +1,12 @@
-import Assistant from '@/components/search/assistant';
 import { SearchDropdown } from '@/components/search/search-dropdown';
-import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { WorkspaceProvider } from '@/contexts/workspace-context';
 import { db } from '@/server/db';
 import { User } from '@/types/user';
 import { RedirectToSignIn, SignedIn, SignedOut } from '@clerk/nextjs';
 import { clerkClient, currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
+import Main from './main';
 
 async function getWorkspaceData(workspaceId: string, userId: string) {
   const workspace = await db.workspace.findUnique({
@@ -70,6 +70,21 @@ async function getWorkspaceData(workspaceId: string, userId: string) {
   };
 }
 
+const LAYOUT_COOKIE_NAME = 'slackr-layout';
+
+async function getLayoutFromCookie(): Promise<number[] | undefined> {
+  const cookieStore = await cookies();
+  const layout = cookieStore.get(LAYOUT_COOKIE_NAME)?.value;
+  if (layout) {
+    try {
+      return JSON.parse(layout);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export default async function Layout({
   children,
   params,
@@ -83,6 +98,8 @@ export default async function Layout({
   const { workspace, members, joinedChannels, unjoinedChannels } =
     await getWorkspaceData(workspaceId, user?.id ?? '');
 
+  const defaultLayout = await getLayoutFromCookie();
+
   return (
     <>
       <SignedOut>
@@ -95,20 +112,18 @@ export default async function Layout({
           joinedChannels={joinedChannels}
           unjoinedChannels={unjoinedChannels}
         >
-          <div className='h-screen'>
+          <div className='h-screen flex flex-col'>
             <div className='h-[50px] border-b px-4 flex items-center gap-8 bg-[hsl(265,56%,25%)]'>
               <Link href='/' className='text-purple-50 font-bold text-2xl'>
                 Slackr
               </Link>
               <div className='flex-1 flex justify-center gap-1'>
                 <SearchDropdown />
-                <Assistant />
               </div>
             </div>
-            <div className='flex w-full h-[calc(100vh-50px)]'>
-              <WorkspaceSidebar />
-              <div className='flex-1'>{children}</div>
-            </div>
+            <Main defaultLayout={defaultLayout ?? [15, 65, 20]}>
+              {children}
+            </Main>
           </div>
         </WorkspaceProvider>
       </SignedIn>
