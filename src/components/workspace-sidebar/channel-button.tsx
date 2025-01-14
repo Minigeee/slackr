@@ -96,8 +96,8 @@ export function ChannelButton(props: ChannelButtonProps) {
           <Link
             key={props.channel.id}
             href={`/w/${props.workspace.id}/${props.channel.id}`}
-            className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100 ${
-              props.selected ? 'bg-indigo-100' : ''
+            className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-violet-100 ${
+              props.selected ? 'bg-violet-100' : ''
             }`}
           >
             # {channelName}

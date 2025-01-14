@@ -3,7 +3,6 @@ import { getEmbeddings } from '@/server/embeddings';
 import { index } from '@/server/pinecone';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
-import { Client } from 'langsmith';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 
@@ -21,6 +20,13 @@ export const chatRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      // Get user's accessible channels
+      const userChannels = await ctx.db.channelMember.findMany({
+        where: { userId: ctx.auth.userId },
+        select: { channelId: true },
+      });
+      const accessibleChannelIds = userChannels.map((m) => m.channelId);
+
       // Get embeddings for the query
       const embeddings = await getEmbeddings([input.message]);
       if (!embeddings[0]?.values) {
@@ -32,6 +38,9 @@ export const chatRouter = createTRPCRouter({
         vector: embeddings[0].values,
         topK: 5,
         includeMetadata: true,
+        filter: {
+          channelId: { $in: accessibleChannelIds },
+        },
       });
 
       // Format context from relevant messages
@@ -44,13 +53,13 @@ export const chatRouter = createTRPCRouter({
             channelName: string;
             createdAt: string;
           };
-          return `[[Message]] From ${metadata.userName} in #${metadata.channelName} at ${new Date(metadata.createdAt).toLocaleString()}:\n${metadata.content}`;
+          return `[[Message]] In #${metadata.channelName} at ${new Date(metadata.createdAt).toLocaleString()}:\n${metadata.content}`;
         })
         .join('\n\n');
 
       const model = new ChatOpenAI({
         apiKey: env.OPENAI_API_KEY,
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o-mini',
       }).withConfig({
         tags: ['slackr-chat'],
         metadata: {
@@ -68,9 +77,10 @@ My monster ability "Maximum Output Minimizer" allows me to identify the path of 
 Like all monsters in this world, I have my own philosophy: the more efficiently you avoid unnecessary work, the more energy you have for what truly matters. I speak in a casual, slightly sardonic tone, delivering wisdom with a mix of monster pride and corporate zen.
 
 Here is some relevant context from previous conversations that my scales have absorbed:
+
 ${contextMessages}
 
-Use this context to inform your responses when relevant, but don't explicitly mention that you're using it unless asked. Remember - conserve energy, maximize impact!
+Use this context to inform your responses when relevant, but don't explicitly mention that you're using it unless asked. Remember - keep it simple, why use more words when you can use less?
 
 The current date/time is ${new Date().toLocaleString()}.`,
         ),

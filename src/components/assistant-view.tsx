@@ -104,7 +104,7 @@ export default function AssistantView() {
   );
 
   const addNewChat = useCallback(() => {
-    const newId = convId.toString();
+    const newId = (convId + 1).toString();
     setConversations((prev) => [...prev, { id: newId, messages: [] }]);
     setActiveTab(newId);
     setConvId(convId + 1);
@@ -201,9 +201,9 @@ export default function AssistantView() {
                       e.stopPropagation();
                       closeChat(conv.id);
                     }}
-                    className='w-5 h-5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity'
+                    className='w-5 h-5 rounded-sm'
                   >
-                    <X className='h-3 w-3' />
+                    <X className='h- w-3' />
                   </Button>
                 )}
               </TabsTrigger>

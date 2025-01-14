@@ -113,8 +113,8 @@ export default async function Layout({
           unjoinedChannels={unjoinedChannels}
         >
           <div className='h-screen flex flex-col'>
-            <div className='h-[50px] border-b px-4 flex items-center gap-8 bg-[hsl(265,56%,25%)]'>
-              <Link href='/' className='text-purple-50 font-bold text-2xl'>
+            <div className='h-[50px] border-b px-4 flex items-center gap-8 bg-violet-950'>
+              <Link href='/' className='text-violet-50 font-bold text-2xl'>
                 Slackr
               </Link>
               <div className='flex-1 flex justify-center gap-1'>

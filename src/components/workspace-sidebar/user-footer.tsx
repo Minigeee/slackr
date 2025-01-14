@@ -37,7 +37,7 @@ export function UserFooter() {
         <DropdownMenuTrigger asChild>
           <Button
             variant='ghost'
-            className='w-full justify-start gap-2 px-2 hover:bg-indigo-100'
+            className='w-full justify-start gap-2 px-2 hover:bg-violet-100'
           >
             <UserAvatar user={currentUser} className='h-8 w-8' />
             <span className='text-sm font-medium'>

@@ -4,9 +4,8 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { getEmbeddings } from '@/server/embeddings';
-import { index } from '@/server/pinecone';
-import { markdownToText } from '@/utils/markdown';
+import { embedMessage } from '@/server/message-embedder';
+import { htmlToMarkdown } from '@/utils/markdown';
 
 export const messageRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -158,32 +157,16 @@ export const messageRouter = createTRPCRouter({
       // Store message in Pinecone asynchronously
       void (async () => {
         try {
-          // Generate embedding for message content
-          const text = markdownToText(input.content);
-          const embeddings = await getEmbeddings([text]);
-          if (!embeddings[0]?.values) {
-            throw new Error('Failed to generate embedding');
-          }
-          
-          // Store in Pinecone with metadata
-          await index.upsert([{
-            id: message.id,
-            values: embeddings[0].values,
-            metadata: {
-              messageId: message.id,
-              content: text,
-              channelId: input.channelId,
-              channelName: channel.name,
-              workspaceId: channel.workspaceId,
-              workspaceName: channel.workspace.name,
-              userId: ctx.auth.userId,
-              userName: `${sender.firstName} ${sender.lastName}`.trim(),
-              createdAt: message.createdAt.toISOString(),
-              threadId: message.threadId ?? '',
-              parentId: message.parentId ?? '',
-              isThread: Boolean(message.threadId || message.parentId),
-            },
-          }]);
+          await embedMessage(message, {
+            channelId: input.channelId,
+            channelName: channel.name,
+            workspaceId: channel.workspaceId,
+            workspaceName: channel.workspace.name,
+            userId: ctx.auth.userId,
+            userName: `${sender.firstName} ${sender.lastName}`.trim(),
+            createdAt: message.createdAt.toISOString(),
+            isThread: Boolean(message.threadId || message.parentId),
+          });
         } catch (error) {
           // Log error but don't fail the message creation
           console.error('Failed to store message in Pinecone:', error);

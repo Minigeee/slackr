@@ -78,7 +78,7 @@ export default function WorkspaceSidebar() {
 
   if (!workspace || !user) {
     return (
-      <div className='flex h-full w-full flex-col bg-indigo-50'>
+      <div className='flex h-full w-full flex-col bg-violet-50'>
         <div className='flex h-12 flex-shrink-0 items-center border-b px-4'>
           <div className='h-4 w-32 animate-pulse rounded bg-muted'></div>
         </div>
@@ -123,7 +123,7 @@ export default function WorkspaceSidebar() {
   };
 
   return (
-    <div className='flex w-full h-full flex-col bg-indigo-50'>
+    <div className='flex w-full h-full flex-col bg-violet-50'>
       {/* Workspace Header */}
       <WorkspaceHeader workspace={workspace} />
 
@@ -139,7 +139,7 @@ export default function WorkspaceSidebar() {
                 <Button
                   variant='ghost'
                   size='icon'
-                  className='h-5 w-5 hover:bg-indigo-100'
+                  className='h-5 w-5 hover:bg-violet-100'
                 >
                   <Plus className='h-4 w-4' />
                 </Button>
@@ -188,8 +188,8 @@ export default function WorkspaceSidebar() {
                   >
                     <Link
                       href={`/w/${workspace.id}/${channel.id}`}
-                      className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100 ${
-                        channel.id === channelId ? 'bg-indigo-100' : ''
+                      className={`flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-violet-100 ${
+                        channel.id === channelId ? 'bg-violet-100' : ''
                       }`}
                     >
                       <UserAvatar
@@ -220,7 +220,7 @@ export default function WorkspaceSidebar() {
                 currentUserId={user.id}
                 onMessageClick={handleCreateDM}
               >
-                <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-indigo-100'>
+                <div className='flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm hover:bg-violet-100'>
                   <UserAvatar
                     user={member}
                     className='mr-2 h-5 w-5'
