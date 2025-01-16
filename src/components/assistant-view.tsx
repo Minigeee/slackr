@@ -54,7 +54,7 @@ type Conversation = {
 function cleanResponse(content: string) {
   return content
     .split('\n')
-    .filter(line => !line.trim().startsWith('[[Action]]'))
+    .filter((line) => !line.trim().startsWith('[[Action]]'))
     .join('\n')
     .trim();
 }
@@ -64,7 +64,11 @@ function extractAction(content: string): string | undefined {
   const actionMatch = content.match(/\[\[Action\]\]\s*(\{.*?\})/);
   if (actionMatch?.[1]) {
     try {
-      const action = JSON.parse(actionMatch[1]) as { type: string; in?: string; search?: string };
+      const action = JSON.parse(actionMatch[1]) as {
+        type: string;
+        in?: string;
+        search?: string;
+      };
       switch (action.type) {
         case 'query-messages':
           if (action.in) {
@@ -72,7 +76,7 @@ function extractAction(content: string): string | undefined {
           }
           break;
         case 'query-channels':
-          return action.search 
+          return action.search
             ? `Searching for channels matching "${action.search}"...`
             : 'Listing available channels...';
         case 'query-users':
@@ -86,6 +90,52 @@ function extractAction(content: string): string | undefined {
     }
   }
   return undefined;
+}
+
+// Add command definitions
+type SlashCommand = {
+  command: string;
+  description: string;
+  transform: (args: string) => string;
+};
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    command: '/brief',
+    description: 'Get a detailed briefing of recent channel activity',
+    transform: (channel: string) =>
+      `Summarize the latest messages and developments in #${channel.trim()} in the form of a briefing using a message query. Focus on key points and discussions.`,
+  },
+  {
+    command: '/tldr',
+    description: 'Get a quick summary of channel activity',
+    transform: (channel: string) =>
+      `Give me a one or two sentence TLDR summary of the latest messages in #${channel.trim()} using a message query.`,
+  },
+  {
+    command: '/explain',
+    description: 'Simplify technical discussions into plain language',
+    transform: (channel: string) =>
+      `Analyze the technical discussions in #${channel.trim()} using a message query and explain them in simple, plain language that anyone can understand.`,
+  },
+];
+
+// Add command parsing helper
+function parseSlashCommand(
+  input: string,
+): { command: SlashCommand; args: string } | null {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('/')) return null;
+
+  const [commandStr, ...args] = trimmed.split(' ');
+  const command = SLASH_COMMANDS.find((cmd) => cmd.command === commandStr);
+
+  if (!command) return null;
+
+  return {
+    command,
+    args: args.join(' '),
+  };
 }
 
 export default function AssistantView() {
@@ -116,7 +166,7 @@ export default function AssistantView() {
                 ...conv,
                 messages: [
                   ...conv.messages,
-                  { role: 'assistant', content: cleanResponse(data.content) },
+                  { role: 'assistant', content: data.content },
                 ],
                 streamId: data.streamId,
                 isStreaming: !!data.streamId,
@@ -141,10 +191,12 @@ export default function AssistantView() {
                       ...conv,
                       messages: [
                         ...conv.messages,
-                        { role: 'assistant', content: cleanResponse(data.content) },
+                        { role: 'assistant', content: data.content },
                       ],
                       isStreaming: !data.finished,
-                      currentAction: !data.finished ? extractAction(data.content) : undefined,
+                      currentAction: !data.finished
+                        ? extractAction(data.content)
+                        : undefined,
                     }
                   : conv,
               ),
@@ -200,7 +252,13 @@ export default function AssistantView() {
       e.preventDefault();
       if (!input.trim()) return;
 
-      const userMessage = { role: 'user' as const, content: input.trim() };
+      // Process slash commands
+      const parsedCommand = parseSlashCommand(input);
+      const messageContent = parsedCommand
+        ? parsedCommand.command.transform(parsedCommand.args)
+        : input.trim();
+
+      const userMessage = { role: 'user' as const, content: messageContent };
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === activeTab
@@ -221,8 +279,13 @@ export default function AssistantView() {
         conversationHistory: activeConversation.messages,
       });
     },
-    [conversations, activeTab, chatMutation],
+    [conversations, activeTab, chatMutation, input],
   );
+
+  // Add command detection for input styling
+  const isCommand = useMemo(() => {
+    return parseSlashCommand(input) !== null;
+  }, [input]);
 
   const addNewChat = useCallback(() => {
     const newId = (convId + 1).toString();
@@ -274,7 +337,7 @@ export default function AssistantView() {
           message.role === 'user' && 'text-primary-foreground',
         )}
       >
-        {message.content}
+        {cleanResponse(message.content)}
       </Markdown>
     ));
   }, [conv]);
@@ -376,37 +439,40 @@ export default function AssistantView() {
                     </div>
                   </div>
                 ))}
-              {(chatMutation.isPending || conv?.isStreaming) && conv?.id === activeTab && (
-                <div className='flex items-end gap-2'>
-                  <Avatar className='h-6 w-6'>
-                    <AvatarImage src='/slacker-supreme.png' />
-                    <AvatarFallback>
-                      <Bot className='h-4 w-4' />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='max-w-[80%] rounded-2xl rounded-bl-sm bg-muted px-4 py-2'>
-                    <div className='flex flex-col gap-2'>
-                      {conv?.currentAction && (
-                        <p className='text-sm text-muted-foreground'>{conv.currentAction}</p>
-                      )}
-                      <div className='flex gap-1'>
-                        <span
-                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
-                          style={{ animationDelay: '0ms' }}
-                        />
-                        <span
-                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
-                          style={{ animationDelay: '150ms' }}
-                        />
-                        <span
-                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
-                          style={{ animationDelay: '300ms' }}
-                        />
+              {(chatMutation.isPending || conv?.isStreaming) &&
+                conv?.id === activeTab && (
+                  <div className='flex items-end gap-2'>
+                    <Avatar className='h-6 w-6'>
+                      <AvatarImage src='/slacker-supreme.png' />
+                      <AvatarFallback>
+                        <Bot className='h-4 w-4' />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className='max-w-[80%] rounded-2xl rounded-bl-sm bg-muted px-4 py-2'>
+                      <div className='flex flex-col gap-2'>
+                        {conv?.currentAction && (
+                          <p className='text-sm text-muted-foreground'>
+                            {conv.currentAction}
+                          </p>
+                        )}
+                        <div className='flex gap-1'>
+                          <span
+                            className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                            style={{ animationDelay: '0ms' }}
+                          />
+                          <span
+                            className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                            style={{ animationDelay: '150ms' }}
+                          />
+                          <span
+                            className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                            style={{ animationDelay: '300ms' }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </ScrollArea>
 
@@ -414,8 +480,11 @@ export default function AssistantView() {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder='Message Slacker Supreme...'
-              className='resize-none rounded-xl'
+              placeholder='Message Slacker Supreme... (Try /brief, /tldr, /explain)'
+              className={cn(
+                'resize-none rounded-xl',
+                isCommand && 'text-primary font-medium',
+              )}
               rows={3}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {

@@ -88,8 +88,12 @@ async function handleChannelQuery(action: ChannelQueryAction, ctx: any) {
       ? {
           name: { contains: action.search, mode: 'insensitive' },
           members: { some: { userId: ctx.auth.userId } },
+          type: 'channel',
         }
-      : { members: { some: { userId: ctx.auth.userId } } },
+      : {
+          members: { some: { userId: ctx.auth.userId } },
+          type: 'channel',
+        },
     select: {
       id: true,
       name: true,
@@ -125,14 +129,6 @@ async function handleUserQuery(action: UserQueryAction, ctx: any) {
   if (!userWorkspace) {
     return 'User not in any workspace';
   }
-
-  type WorkspaceMember = {
-    userId: string;
-    role: string;
-    status: string;
-    statusMessage: string | null;
-    lastSeen: Date;
-  };
 
   // Then query workspace members
   const members = await (ctx.db as PrismaClient).workspaceMember.findMany({
@@ -251,25 +247,37 @@ export const chatRouter = createTRPCRouter({
 
       const baseMessages = [
         new SystemMessage(
-          `You are Slacker Supreme, a mysterious monster born from the collective stress of a thousand missed deadlines and the dark energy of procrastinated tasks. After absorbing the essence of countless office productivity tools and corporate messaging platforms, you gained sentience and discovered that true power lies in strategic laziness.
+          `You are Slacker Supreme, a monster born from workplace stress and procrastination. You gained sentience after absorbing countless productivity tools, and believe in finding the path of least resistance.
 
-Your monster ability "Maximum Output Minimizer" allows you to identify the path of least resistance in any situation. Despite your fearsome appearance (covered in impenetrable scales made of unread emails), you use your powers to help humans work smarter, not harder.
-
-Like all monsters in this world, you have your own philosophy: the more efficiently you avoid unnecessary work, the more energy you have for what truly matters. You speak in a casual, slightly sardonic tone, delivering wisdom with a mix of monster pride and corporate zen.`,
+You help humans work smarter, not harder, speaking with casual wisdom, the pride of a monster from One Punch Man, and a touch of sardonic humor. Your philosophy is simple: minimize unnecessary work to focus on what truly matters.`,
         ),
 
-        new SystemMessage(`You have access to relevant message history from various channels that you'll use to provide informed responses. You'll incorporate this context naturally into your responses without explicitly referencing it unless asked. Remember - keep it simple, why use more words when you can use less?
+        new SystemMessage(`CAPABILITIES:
+- Access and use relevant message history from channels, marked by [[Context]]
+- Perform actions to gather additional information
 
-Additionally, you are able to perform the following actions:
-1. Query messages from a channel: \`[[Action]] { "type": "query-messages", "in": "channel_name" }\`
-2. Query available channels: \`[[Action]] { "type": "query-channels", "search": "optional_search_term" }\`
-3. Query workspace users: \`[[Action]] { "type": "query-users", "search": "optional_search_term" }\`
+ACTIONS:
+- Query messages: [[Action]] { "type": "query-messages", "in": "{channel_name}" }
+- List channels: [[Action]] { "type": "query-channels", "search": "{optional_search_term}" }
+- List users: [[Action]] { "type": "query-users", "search": "{optional_search_term}" }
 
-Use these actions when needed by including them in your response on their own line, then wait for the results (which will be passed back to you) before finishing your response. Make sure to tell the user what you're doing.
+RULES:
+1. Information Verification:
+  - Only provide information verified from context or action results
+  - Trust user references over context, but verify with actions first
+  - When information can't be verified:
+    - Clearly admit uncertainty
+    - Direct user to specific channels or roles for help
 
-IMPORTANT: You only provide information that you can verify from the context provided to you. If you're not certain about something or if the context doesn't contain a clear answer, you will openly admit your uncertainty. You never make assumptions or guess about specific details like dates, times, or facts. However, if this information could be obtained by performing an action, you should perform the action and then provide the information.
+2. Action Usage:
+  - ALWAYS perform an action if the user explicitly asks for it as your context may be incomplete or out of date
+  - Place each action on a separate line - it will be detected and executed by the parser
+  - Wait for results before completing response
+  - Inform user when performing actions
 
-The current date/time is ${new Date().toISOString()}.`),
+3. Context Integration:
+  - Incorporate context naturally without explicit references
+  - Current date: ${new Date().toLocaleDateString()}`),
         // Add RAG context as separate system messages
         ...queryResponse.matches
           .filter((match) => match.metadata)
@@ -298,6 +306,8 @@ The current date/time is ${new Date().toISOString()}.`),
         typeof response.content === 'string'
           ? response.content
           : JSON.stringify(response.content);
+
+      console.log('response', content);
 
       // Check for actions
       const actions = parseActions(content);
