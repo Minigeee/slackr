@@ -2,14 +2,15 @@
 
 import { cn } from '@/lib/utils';
 import { api } from '@/trpc/react';
+import { EVENTS, getStreamChannelName, pusherClient } from '@/utils/pusher';
 import { Bot, PlusIcon, X } from 'lucide-react';
 import Markdown from 'markdown-to-jsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 /* TEMP : Convo RAG data
 const data = [
@@ -44,7 +45,48 @@ type AIChatMessage = {
 type Conversation = {
   id: string;
   messages: AIChatMessage[];
+  streamId?: string;
+  isStreaming?: boolean;
+  currentAction?: string;
 };
+
+// Helper to clean action lines from response
+function cleanResponse(content: string) {
+  return content
+    .split('\n')
+    .filter(line => !line.trim().startsWith('[[Action]]'))
+    .join('\n')
+    .trim();
+}
+
+// Helper to extract current action from response
+function extractAction(content: string): string | undefined {
+  const actionMatch = content.match(/\[\[Action\]\]\s*(\{.*?\})/);
+  if (actionMatch?.[1]) {
+    try {
+      const action = JSON.parse(actionMatch[1]) as { type: string; in?: string; search?: string };
+      switch (action.type) {
+        case 'query-messages':
+          if (action.in) {
+            return `Checking messages from ${action.in.startsWith('#') ? action.in : `#${action.in}`}...`;
+          }
+          break;
+        case 'query-channels':
+          return action.search 
+            ? `Searching for channels matching "${action.search}"...`
+            : 'Listing available channels...';
+        case 'query-users':
+          return action.search
+            ? `Searching for users matching "${action.search}"...`
+            : 'Listing workspace members...';
+      }
+      return `Performing ${action.type}...`;
+    } catch (e) {
+      return undefined;
+    }
+  }
+  return undefined;
+}
 
 export default function AssistantView() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -56,6 +98,15 @@ export default function AssistantView() {
   const [input, setInput] = useState('');
   const [convId, setConvId] = useState(1);
 
+  const cleanupPusherSubscription = useCallback((streamId: string) => {
+    const channelName = getStreamChannelName(streamId);
+    const channel = pusherClient.channel(channelName);
+    if (channel) {
+      channel.unbind_all();
+      pusherClient.unsubscribe(channelName);
+    }
+  }, []);
+
   const chatMutation = api.chat.chat.useMutation({
     onSuccess: (data) => {
       setConversations((prev) =>
@@ -65,14 +116,84 @@ export default function AssistantView() {
                 ...conv,
                 messages: [
                   ...conv.messages,
-                  { role: 'assistant', content: data.content },
+                  { role: 'assistant', content: cleanResponse(data.content) },
                 ],
+                streamId: data.streamId,
+                isStreaming: !!data.streamId,
+                currentAction: extractAction(data.content),
+              }
+            : conv,
+        ),
+      );
+
+      if (data.streamId) {
+        const { streamId } = data;
+        const channelName = getStreamChannelName(streamId);
+        const channel = pusherClient.subscribe(channelName);
+
+        channel.bind(
+          EVENTS.STREAM_RESPONSE,
+          (data: { content: string; finished: boolean }) => {
+            setConversations((prev) =>
+              prev.map((conv) =>
+                conv.id === activeTab
+                  ? {
+                      ...conv,
+                      messages: [
+                        ...conv.messages,
+                        { role: 'assistant', content: cleanResponse(data.content) },
+                      ],
+                      isStreaming: !data.finished,
+                      currentAction: !data.finished ? extractAction(data.content) : undefined,
+                    }
+                  : conv,
+              ),
+            );
+
+            if (data.finished) {
+              channel.unbind(EVENTS.STREAM_RESPONSE);
+              cleanupPusherSubscription(streamId);
+            }
+          },
+        );
+      }
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === activeTab
+            ? {
+                ...conv,
+                isStreaming: false,
+                currentAction: undefined,
               }
             : conv,
         ),
       );
     },
   });
+
+  // Cleanup pusher subscriptions when the component unmounts
+  useEffect(() => {
+    return () => {
+      conversations.forEach((conv) => {
+        if (conv.streamId) {
+          cleanupPusherSubscription(conv.streamId);
+        }
+      });
+    };
+  }, [conversations]);
+
+  // Cleanup pusher subscriptions when the active tab changes
+  useEffect(() => {
+    const prevConv = conversations.find(
+      (c) => c.id !== activeTab && c.streamId,
+    );
+    if (prevConv?.streamId) {
+      cleanupPusherSubscription(prevConv.streamId);
+    }
+  }, [activeTab]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -220,8 +341,8 @@ export default function AssistantView() {
         </div>
 
         <div className='flex-1 flex flex-col p-4 min-h-0'>
-          <ScrollArea 
-            ref={scrollAreaRef} 
+          <ScrollArea
+            ref={scrollAreaRef}
             className='flex-1 pr-4 min-h-0'
             viewportClassName='min-h-0'
           >
@@ -230,8 +351,9 @@ export default function AssistantView() {
                 conv?.messages.map((message, i) => (
                   <div
                     key={i}
-                    className={cn('flex items-end gap-2', 
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    className={cn(
+                      'flex items-end gap-2',
+                      message.role === 'user' ? 'justify-end' : 'justify-start',
                     )}
                   >
                     {message.role === 'assistant' && (
@@ -247,14 +369,14 @@ export default function AssistantView() {
                         'max-w-[80%] rounded-2xl px-4 py-2',
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground rounded-br-sm'
-                          : 'bg-muted rounded-bl-sm'
+                          : 'bg-muted rounded-bl-sm',
                       )}
                     >
                       {messages[i]}
                     </div>
                   </div>
                 ))}
-              {chatMutation.isPending && conv?.id === activeTab && (
+              {(chatMutation.isPending || conv?.isStreaming) && conv?.id === activeTab && (
                 <div className='flex items-end gap-2'>
                   <Avatar className='h-6 w-6'>
                     <AvatarImage src='/slacker-supreme.png' />
@@ -263,10 +385,24 @@ export default function AssistantView() {
                     </AvatarFallback>
                   </Avatar>
                   <div className='max-w-[80%] rounded-2xl rounded-bl-sm bg-muted px-4 py-2'>
-                    <div className='flex gap-1'>
-                      <span className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce' style={{ animationDelay: '0ms' }} />
-                      <span className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce' style={{ animationDelay: '150ms' }} />
-                      <span className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce' style={{ animationDelay: '300ms' }} />
+                    <div className='flex flex-col gap-2'>
+                      {conv?.currentAction && (
+                        <p className='text-sm text-muted-foreground'>{conv.currentAction}</p>
+                      )}
+                      <div className='flex gap-1'>
+                        <span
+                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <span
+                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <span
+                          className='w-2 h-2 rounded-full bg-foreground/30 animate-bounce'
+                          style={{ animationDelay: '300ms' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

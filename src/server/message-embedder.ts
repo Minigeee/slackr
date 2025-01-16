@@ -6,6 +6,7 @@ import { getEmbeddings } from './embeddings';
 import { index } from './pinecone';
 
 const MIN_TOKENS = 15; // Only embed messages longer than this, unless they have mentions
+const MAX_THREAD_CHUNK_TOKENS = 1000; // Maximum tokens per thread chunk
 
 // Rough token count estimation - can be refined based on your needs
 function estimateTokens(text: string): number {
@@ -36,13 +37,14 @@ type MessageMetadata = {
   threadId?: string;
   parentId?: string;
   isThread: boolean;
+  isDm: boolean;
 };
 
-function formatMessageText(userName: string, content: string): string {
-  return `${userName}: ${htmlToMarkdown(content)}`;
+function formatMessageText(userName: string, channelName: string, message: Message): string {
+  return `Message from ${userName} at ${message.createdAt.toISOString()} in #${channelName}: ${htmlToMarkdown(message.content)}`;
 }
 
-async function embedThread(
+export async function embedThread(
   threadId: string,
   metadata: Omit<MessageMetadata, 'messageId'>,
 ) {
@@ -57,6 +59,8 @@ async function embedThread(
     orderBy: { createdAt: 'asc' },
   });
 
+  if (!messages.length) return;
+
   // Get map of sender ids to names
   const senderIds = new Set(messages.map((msg) => msg.userId));
   const client = await clerkClient();
@@ -67,41 +71,68 @@ async function embedThread(
     senders.data.map((sender) => [sender.id, getUserName(sender)]),
   );
 
-  if (!messages.length) return;
-
   // Format messages with sender names
-  const combinedText = messages
-    .map((msg: Message) => {
-      const userName = senderMap.get(msg.userId) || `Unknown User`;
-      return formatMessageText(userName, msg.content);
-    })
-    .join('\n\n');
+  const formattedMessages = messages.map((msg: Message) => {
+    const userName = senderMap.get(msg.userId) || `Unknown User`;
+    return formatMessageText(userName, metadata.channelName, msg);
+  });
 
-  // Generate embedding for the entire thread
-  const embeddings = await getEmbeddings([combinedText]);
-  if (!embeddings[0]?.values) {
-    throw new Error('Failed to generate embedding for thread');
+  // Split messages into chunks based on token count
+  const chunks: string[] = [];
+  let currentChunk: string[] = [];
+  let currentChunkTokens = 0;
+
+  for (const message of formattedMessages) {
+    const messageTokens = estimateTokens(message);
+    
+    // If adding this message would exceed the chunk limit, start a new chunk
+    if (currentChunkTokens + messageTokens > MAX_THREAD_CHUNK_TOKENS && currentChunk.length > 0) {
+      chunks.push(currentChunk.join('\n\n'));
+      currentChunk = [];
+      currentChunkTokens = 0;
+    }
+    
+    currentChunk.push(message);
+    currentChunkTokens += messageTokens;
   }
 
-  // Store in Pinecone with thread metadata
-  await index.upsert([
-    {
-      id: threadId,
-      values: embeddings[0].values,
-      metadata: {
-        messageId: threadId,
-        content: combinedText,
-        ...metadata,
-        isThread: true,
+  // Add the last chunk if it has any messages
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join('\n\n'));
+  }
+
+  // Generate embeddings and store each chunk
+  await Promise.all(chunks.map(async (chunk, i) => {
+    const embeddings = await getEmbeddings([chunk]);
+    if (!embeddings[0]?.values) {
+      throw new Error('Failed to generate embedding for thread chunk');
+    }
+
+    // Store in Pinecone with thread metadata and chunk info
+    await index.upsert([
+      {
+        id: chunks.length === 1 ? threadId : `${threadId}_chunk_${i}`,
+        values: embeddings[0].values,
+        metadata: {
+          messageId: threadId,
+          content: chunk,
+          ...metadata,
+          isThread: true,
+          isChunk: chunks.length > 1,
+          chunkIndex: i,
+          totalChunks: chunks.length,
+        },
       },
-    },
-  ]);
+    ]);
+  }));
 }
 
 export async function embedMessage(
   message: Message,
   metadata: Omit<MessageMetadata, 'messageId'>,
 ) {
+  if (metadata.isDm) metadata.channelName = 'DM';
+
   // If message is part of a thread, update thread embedding
   if (message.threadId) {
     await embedThread(message.threadId, metadata);
@@ -110,7 +141,7 @@ export async function embedMessage(
 
   // Check if message should be embedded individually
   const tokens = estimateTokens(message.content);
-  if (tokens < MIN_TOKENS && !hasMentions(message.content)) {
+  if (tokens < MIN_TOKENS && !hasMentions(message.content) && !metadata.isDm) {
     console.log('skipping message with tokens', tokens);
     return; // Skip embedding for short messages without mentions
   }
@@ -125,7 +156,7 @@ export async function embedMessage(
     orderBy: { createdAt: 'desc' },
   });
 
-  let text = formatMessageText(metadata.userName, message.content);
+  let text = formatMessageText(metadata.userName, metadata.channelName, message);
 
   // Format text with previous message context if it exists
   if (previousMessage) {
@@ -136,7 +167,7 @@ export async function embedMessage(
       previousMessage.userId === metadata.userId
         ? metadata.userName
         : getUserName(prevSender);
-    const prevText = formatMessageText(prevUserName, previousMessage.content);
+    const prevText = formatMessageText(prevUserName, metadata.channelName, previousMessage);
     text = `${prevText}\n\n${text}`;
   }
 
@@ -160,4 +191,8 @@ export async function embedMessage(
       },
     },
   ]);
+}
+
+export async function deleteMessageEmbedding(messageId: string) {
+  await index.deleteOne(messageId);
 }

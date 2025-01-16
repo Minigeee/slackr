@@ -1,10 +1,9 @@
-import { env } from '@/env';
 import { Pinecone } from '@pinecone-database/pinecone';
 
 const pc = new Pinecone({
-  apiKey: env.PINECONE_API_KEY,
+  apiKey: process.env.PINECONE_API_KEY!,
 });
 
-export const index = pc.index(env.PINECONE_INDEX);
+export const index = pc.index(process.env.PINECONE_INDEX!);
 
 export default pc;

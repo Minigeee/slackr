@@ -4,7 +4,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { embedMessage } from '@/server/message-embedder';
+import { embedMessage, embedThread, deleteMessageEmbedding } from '@/server/message-embedder';
 import { htmlToMarkdown } from '@/utils/markdown';
 
 export const messageRouter = createTRPCRouter({
@@ -166,6 +166,7 @@ export const messageRouter = createTRPCRouter({
             userName: `${sender.firstName} ${sender.lastName}`.trim(),
             createdAt: message.createdAt.toISOString(),
             isThread: Boolean(message.threadId || message.parentId),
+            isDm: channel.type === 'dm',
           });
         } catch (error) {
           // Log error but don't fail the message creation
@@ -205,6 +206,9 @@ export const messageRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const message = await ctx.db.message.findUnique({
         where: { id: input.messageId },
+        include: {
+          channel: { include: { workspace: true } },
+        },
       });
 
       if (!message) {
@@ -223,6 +227,28 @@ export const messageRouter = createTRPCRouter({
           attachments: true,
         },
       });
+
+      const client = await clerkClient();
+      const user = await client.users.getUser(ctx.auth.userId);
+
+      // Re-embed the updated message
+      void (async () => {
+        try {
+          await embedMessage(updatedMessage, {
+            channelId: message.channelId,
+            channelName: message.channel.name,
+            workspaceId: message.channel.workspaceId,
+            workspaceName: message.channel.workspace.name,
+            userId: ctx.auth.userId,
+            userName: `${user.firstName} ${user.lastName}`.trim(),
+            createdAt: updatedMessage.createdAt.toISOString(),
+            isThread: Boolean(message.threadId || message.parentId),
+            isDm: message.channel.type === 'dm',
+          });
+        } catch (error) {
+          console.error('Failed to update message embedding:', error);
+        }
+      })();
 
       // Trigger Pusher event for updated message
       await pusher.trigger(
@@ -279,6 +305,35 @@ export const messageRouter = createTRPCRouter({
       await ctx.db.message.delete({
         where: { id: input.messageId },
       });
+
+      // Handle message embeddings deletion
+      void (async () => {
+        try {
+          if (message.threadId) {
+            // Get user info for the message author
+            const client = await clerkClient();
+            const user = await client.users.getUser(message.userId);
+            
+            // If message is part of a thread, re-embed the entire thread without this message
+            await embedThread(message.threadId, {
+              channelId: message.channel.id,
+              channelName: message.channel.name,
+              workspaceId: message.channel.workspace.id,
+              workspaceName: message.channel.workspace.name,
+              userId: message.userId,
+              userName: `${user.firstName} ${user.lastName}`.trim(),
+              createdAt: message.createdAt.toISOString(),
+              isThread: true,
+              isDm: message.channel.type === 'dm',
+            });
+          } else {
+            // If it's a regular message, just delete its embedding
+            await deleteMessageEmbedding(input.messageId);
+          }
+        } catch (error) {
+          console.error('Failed to handle message embedding deletion:', error);
+        }
+      })();
 
       // Trigger Pusher event for deleted message
       await pusher.trigger(

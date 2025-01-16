@@ -1,4 +1,3 @@
-import { env } from '@/env';
 import {
   DeleteObjectCommand,
   PutObjectCommand,
@@ -7,10 +6,10 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const s3Client = new S3Client({
-  region: env.AWS_REGION,
+  region: process.env.AWS_REGION!,
   credentials: {
-    accessKeyId: env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
 
@@ -20,7 +19,7 @@ export const generateUploadPresignedUrl = async (
   expiresIn = 60, // URL expires in 60 seconds
 ) => {
   const command = new PutObjectCommand({
-    Bucket: env.AWS_BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME!,
     Key: key,
     ContentType: contentType,
   });
@@ -31,7 +30,7 @@ export const generateUploadPresignedUrl = async (
 
 export const deleteFile = async (key: string) => {
   const command = new DeleteObjectCommand({
-    Bucket: env.AWS_BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME!,
     Key: key,
   });
 
@@ -39,5 +38,5 @@ export const deleteFile = async (key: string) => {
 };
 
 export const getFileUrl = (key: string) => {
-  return `https://${env.AWS_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };

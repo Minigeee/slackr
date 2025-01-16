@@ -26,4 +26,5 @@ export const EVENTS = {
   TYPING_STOP: 'client-typing-stop',
   PIN_MESSAGE: 'pin-message',
   UNPIN_MESSAGE: 'unpin-message',
+  STREAM_RESPONSE: 'stream-response',
 } as const;

@@ -13,6 +13,9 @@ export const pusherClient = new PusherClient(
 export const getChannelName = (channelId: string) =>
   `private-channel-${channelId}`;
 
+export const getStreamChannelName = (streamId: string) =>
+  `stream-${streamId}`;
+
 // Event names (must match server-side events)
 export const EVENTS = {
   NEW_MESSAGE: 'new-message',
@@ -26,6 +29,7 @@ export const EVENTS = {
   TYPING_STOP: 'client-typing-stop',
   PIN_MESSAGE: 'pin-message',
   UNPIN_MESSAGE: 'unpin-message',
+  STREAM_RESPONSE: 'stream-response',
 } as const;
 
 // Helper hook for subscribing to a channel
