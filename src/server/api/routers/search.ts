@@ -1,9 +1,9 @@
 import { User } from '@/types/user';
 import { clerkClient, type User as ClerkUser } from '@clerk/nextjs/server';
+import { Message } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { Message } from '@prisma/client';
 
 export const searchRouter = createTRPCRouter({
   messages: protectedProcedure
@@ -39,7 +39,9 @@ export const searchRouter = createTRPCRouter({
       }
 
       // Search messages using PostgreSQL full-text search
-      const messages = await ctx.db.$queryRaw<Array<Message & { rank: number }>>`
+      const messages = await ctx.db.$queryRaw<
+        Array<Message & { rank: number }>
+      >`
         WITH ranked_messages AS (
           SELECT m.*,
                  ts_rank(to_tsvector('english', m.content), plainto_tsquery('english', ${input.query})) as rank

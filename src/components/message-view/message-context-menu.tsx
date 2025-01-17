@@ -73,7 +73,9 @@ export const MessageContextMenu = ({
   const handleCopy = () => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = message.content;
-    navigator.clipboard.writeText(tempDiv.textContent ?? '').catch(console.error);
+    navigator.clipboard
+      .writeText(tempDiv.textContent ?? '')
+      .catch(console.error);
   };
 
   const handleDelete = async () => {

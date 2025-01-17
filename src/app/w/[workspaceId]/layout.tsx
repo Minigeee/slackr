@@ -77,7 +77,7 @@ async function getLayoutFromCookie(): Promise<number[] | undefined> {
   const layout = cookieStore.get(LAYOUT_COOKIE_NAME)?.value;
   if (layout) {
     try {
-      return JSON.parse(layout);
+      return JSON.parse(layout) as number[];
     } catch {
       return undefined;
     }

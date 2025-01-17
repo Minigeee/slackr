@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/trpc/react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export function CreateWatchDialog() {
@@ -33,7 +32,7 @@ export function CreateWatchDialog() {
   const createMutation = api.watch.create.useMutation({
     onSuccess: () => {
       setOpen(false);
-      utils.watch.getAll.invalidate();
+      utils.watch.getAll.invalidate().catch(console.error);
     },
   });
 

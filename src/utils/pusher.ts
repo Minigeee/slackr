@@ -13,8 +13,7 @@ export const pusherClient = new PusherClient(
 export const getChannelName = (channelId: string) =>
   `private-channel-${channelId}`;
 
-export const getStreamChannelName = (streamId: string) =>
-  `stream-${streamId}`;
+export const getStreamChannelName = (streamId: string) => `stream-${streamId}`;
 
 // Event names (must match server-side events)
 export const EVENTS = {

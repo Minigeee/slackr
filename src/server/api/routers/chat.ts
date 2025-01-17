@@ -6,36 +6,17 @@ import { getStreamChannelName } from '@/utils/pusher';
 import { clerkClient } from '@clerk/nextjs/server';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
-import { Message, PrismaClient } from '@prisma/client';
+import { Message } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
+import { TrpcContext } from '@/types/trpc-context';
 
 // Action pattern regex
 const ACTION_PATTERN = /\[\[Action\]\]\s*(\{.*?\})/g;
 
 // Max iterations for action loop
 const MAX_ACTION_ITERATIONS = 5;
-
-// Parse actions from LLM response
-function parseActions(content: string) {
-  const actions = [];
-  let match;
-
-  while ((match = ACTION_PATTERN.exec(content)) !== null) {
-    try {
-      if (match[1]) {
-        // Add null check for TypeScript
-        const action = JSON.parse(match[1]);
-        actions.push(action);
-      }
-    } catch (e) {
-      console.error('Failed to parse action:', e);
-    }
-  }
-
-  return actions;
-}
 
 interface MessageQueryAction {
   type: 'query-messages';
@@ -54,8 +35,28 @@ interface UserQueryAction {
 
 type Action = MessageQueryAction | ChannelQueryAction | UserQueryAction;
 
+// Parse actions from LLM response
+function parseActions(content: string) {
+  const actions: Action[] = [];
+  let match;
+
+  while ((match = ACTION_PATTERN.exec(content)) !== null) {
+    try {
+      if (match[1]) {
+        // Add null check for TypeScript
+        const action: Action = JSON.parse(match[1]);
+        actions.push(action);
+      }
+    } catch (e) {
+      console.error('Failed to parse action:', e);
+    }
+  }
+
+  return actions;
+}
+
 // Handle message query action
-async function handleMessageQuery(action: MessageQueryAction, ctx: any) {
+async function handleMessageQuery(action: MessageQueryAction, ctx: TrpcContext) {
   const channel = await ctx.db.channel.findFirst({
     where: { name: action.in.startsWith('#') ? action.in.slice(1) : action.in },
     select: { id: true },
@@ -82,8 +83,8 @@ async function handleMessageQuery(action: MessageQueryAction, ctx: any) {
 }
 
 // Handle channel query action
-async function handleChannelQuery(action: ChannelQueryAction, ctx: any) {
-  const channels = await (ctx.db as PrismaClient).channel.findMany({
+async function handleChannelQuery(action: ChannelQueryAction, ctx: TrpcContext) {
+  const channels = await ctx.db.channel.findMany({
     where: action.search
       ? {
           name: { contains: action.search, mode: 'insensitive' },
@@ -119,7 +120,7 @@ async function handleChannelQuery(action: ChannelQueryAction, ctx: any) {
 }
 
 // Handle user query action
-async function handleUserQuery(action: UserQueryAction, ctx: any) {
+async function handleUserQuery(action: UserQueryAction, ctx: TrpcContext) {
   // First get the user's workspace
   const userWorkspace = await ctx.db.workspaceMember.findFirst({
     where: { userId: ctx.auth.userId },
@@ -131,7 +132,7 @@ async function handleUserQuery(action: UserQueryAction, ctx: any) {
   }
 
   // Then query workspace members
-  const members = await (ctx.db as PrismaClient).workspaceMember.findMany({
+  const members = await ctx.db.workspaceMember.findMany({
     where: {
       workspaceId: userWorkspace.workspaceId,
       ...(action.search
@@ -164,7 +165,7 @@ async function handleUserQuery(action: UserQueryAction, ctx: any) {
 }
 
 // General action handler
-async function handleAction(action: Action, ctx: any) {
+async function handleAction(action: Action, ctx: TrpcContext) {
   switch (action.type) {
     case 'query-messages':
       return handleMessageQuery(action, ctx);
@@ -173,7 +174,6 @@ async function handleAction(action: Action, ctx: any) {
     case 'query-users':
       return handleUserQuery(action, ctx);
     default: {
-      const _exhaustiveCheck: never = action;
       console.warn(`Unknown action type: ${(action as any).type}`);
       return null;
     }
@@ -181,7 +181,7 @@ async function handleAction(action: Action, ctx: any) {
 }
 
 // Process all actions and return results
-async function processActions(actions: Action[], ctx: any) {
+async function processActions(actions: Action[], ctx: TrpcContext) {
   const results = [];
 
   for (const action of actions) {
@@ -320,7 +320,7 @@ RULES:
 
       // Start async processing of actions
       void (async () => {
-        let currentMessages = [...baseMessages, new SystemMessage(content)];
+        const currentMessages = [...baseMessages, new SystemMessage(content)];
         let currentActions = actions;
         let iteration = 0;
 

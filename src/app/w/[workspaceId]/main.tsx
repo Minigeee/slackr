@@ -16,8 +16,8 @@ const LAYOUT_COOKIE_NAME = 'slackr-layout';
 
 /** Save layout to cookie */
 const onLayout = throttle(
-  (sizes: number[]) => {
-    setCookie(LAYOUT_COOKIE_NAME, JSON.stringify(sizes));
+  async (sizes: number[]) => {
+    await setCookie(LAYOUT_COOKIE_NAME, JSON.stringify(sizes));
   },
   200,
   { trailing: true },

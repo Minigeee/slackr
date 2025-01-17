@@ -47,8 +47,10 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
 
   const handleCopyInviteLink = () => {
     const inviteLink = `${window.location.origin}/join/${workspace.id}`;
-    navigator.clipboard.writeText(inviteLink).then(() => {
-      toast({
+    navigator.clipboard
+      .writeText(inviteLink)
+      .then(() => {
+        toast({
           description: 'Invite link copied to clipboard',
         });
       })

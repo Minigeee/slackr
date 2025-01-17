@@ -3,7 +3,7 @@
 import { useWorkspace } from '@/contexts/workspace-context';
 import { api } from '@/trpc/react';
 import { User } from '@/types/user';
-import { useClerk, useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { MessageSquare, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';

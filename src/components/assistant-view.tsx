@@ -37,7 +37,8 @@ function cleanResponse(content: string) {
 
 // Helper to extract current action from response
 function extractAction(content: string): string | undefined {
-  const actionMatch = content.match(/\[\[Action\]\]\s*(\{.*?\})/);
+  const actionRegex = /\[\[Action\]\]\s*(\{.*?\})/;
+  const actionMatch = actionRegex.exec(content);
   if (actionMatch?.[1]) {
     try {
       const action = JSON.parse(actionMatch[1]) as {
@@ -122,7 +123,7 @@ export default function AssistantView() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>(
-    _convCache[workspace?.id ?? ''] || [{ id: '1', messages: [] }],
+    _convCache[workspace?.id ?? ''] ?? [{ id: '1', messages: [] }],
   );
   const [activeTab, setActiveTab] = useState('1');
   const [input, setInput] = useState('');
@@ -233,7 +234,7 @@ export default function AssistantView() {
   }, [activeTab]);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    (e: React.FormEvent) => {
       e.preventDefault();
       if (!input.trim()) return;
 
@@ -259,7 +260,7 @@ export default function AssistantView() {
       const activeConversation = conversations.find((c) => c.id === activeTab);
       if (!activeConversation) return;
 
-      await chatMutation.mutate({
+      chatMutation.mutate({
         message: userMessage.content,
         conversationHistory: activeConversation.messages,
       });
@@ -287,7 +288,7 @@ export default function AssistantView() {
       setConversations(newConversations);
 
       if (activeTab === id) {
-        setActiveTab(newConversations[0]?.id || '1');
+        setActiveTab(newConversations[0]?.id ?? '1');
       }
     },
     [conversations, activeTab],
@@ -315,8 +316,9 @@ export default function AssistantView() {
 
   // Render messages
   const messages = useMemo(() => {
-    return conv?.messages.map((message) => (
+    return conv?.messages.map((message, i) => (
       <Markdown
+        key={i}
         className={cn(
           'prose',
           message.role === 'user' && 'text-primary-foreground',

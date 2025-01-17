@@ -77,7 +77,7 @@ export async function embedThread(
 
   // Format messages with sender names
   const formattedMessages = messages.map((msg: Message) => {
-    const userName = senderMap.get(msg.userId) || `Unknown User`;
+    const userName = senderMap.get(msg.userId) ?? `Unknown User`;
     return formatMessageText(userName, metadata.channelName, msg);
   });
 

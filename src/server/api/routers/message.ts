@@ -1,11 +1,14 @@
+import {
+  deleteMessageEmbedding,
+  embedMessage,
+  embedThread,
+} from '@/server/message-embedder';
 import { EVENTS, getChannelName, pusher } from '@/server/pusher';
 import { User } from '@/types/user';
 import { clerkClient } from '@clerk/nextjs/server';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { embedMessage, embedThread, deleteMessageEmbedding } from '@/server/message-embedder';
-import { htmlToMarkdown } from '@/utils/markdown';
 
 export const messageRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -165,7 +168,7 @@ export const messageRouter = createTRPCRouter({
             userId: ctx.auth.userId,
             userName: `${sender.firstName} ${sender.lastName}`.trim(),
             createdAt: Math.round(message.createdAt.getTime() / 1000),
-            isThread: Boolean(message.threadId || message.parentId),
+            isThread: Boolean(message.threadId ?? message.parentId),
             isDm: channel.type === 'dm',
           });
         } catch (error) {
@@ -242,7 +245,7 @@ export const messageRouter = createTRPCRouter({
             userId: ctx.auth.userId,
             userName: `${user.firstName} ${user.lastName}`.trim(),
             createdAt: Math.round(updatedMessage.createdAt.getTime() / 1000),
-            isThread: Boolean(message.threadId || message.parentId),
+            isThread: Boolean(message.threadId ?? message.parentId),
             isDm: message.channel.type === 'dm',
           });
         } catch (error) {
@@ -313,7 +316,7 @@ export const messageRouter = createTRPCRouter({
             // Get user info for the message author
             const client = await clerkClient();
             const user = await client.users.getUser(message.userId);
-            
+
             // If message is part of a thread, re-embed the entire thread without this message
             await embedThread(message.threadId, {
               channelId: message.channel.id,

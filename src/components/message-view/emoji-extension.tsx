@@ -170,8 +170,8 @@ const EmojiSuggestor: Omit<SuggestionOptions<EmojiData>, 'editor'> = {
     // Get search results
     const results =
       query.length > 0
-        ? _searchCache[query] ??
-          (prev ?? _data).filter((x) => x.includes(query))
+        ? (_searchCache[query] ??
+          (prev ?? _data).filter((x) => x.includes(query)))
         : _data;
 
     // Save results

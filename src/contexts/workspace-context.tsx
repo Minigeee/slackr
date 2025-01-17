@@ -275,46 +275,61 @@ export function WorkspaceProvider({
         members: members,
         isLoading,
         setStatus,
-        createChannel: useCallback(async (name: string) => {
-          if (!workspaceId) return null;
-          const channel = await createChannel.mutateAsync({
-            workspaceId,
-            name,
-          });
-          return channel;
-        }, [workspaceId, createChannel]),
-        joinChannel: useCallback(async (channelId: string) => {
-          await joinChannel.mutateAsync({ channelId });
-          const channel = unjoinedChannels.find((c) => c.id === channelId);
-          if (!channel) {
-            throw new Error('Channel not found');
-          }
-          return channel;
-        }, [joinChannel, unjoinedChannels]),
-        deleteChannel: useCallback(async (channelId: string) => {
-          // Optimistically remove the channel from the lists
-          const channel = joinedChannels.find((c) => c.id === channelId);
-          if (channel) {
-            setJoinedChannels((prev) => prev.filter((c) => c.id !== channelId));
-          } else {
-            setUnjoinedChannels((prev) => prev.filter((c) => c.id !== channelId));
-          }
-
-          try {
-            await deleteChannelMutation.mutateAsync({ channelId });
-          } catch (error) {
-            // If the deletion fails, revert the optimistic update
-            if (channel) {
-              setJoinedChannels((prev) => [...prev, channel]);
-            } else {
-              const unjoinedChannel = unjoinedChannels.find((c) => c.id === channelId);
-              if (unjoinedChannel) {
-                setUnjoinedChannels((prev) => [...prev, unjoinedChannel]);
-              }
+        createChannel: useCallback(
+          async (name: string) => {
+            if (!workspaceId) return null;
+            const channel = await createChannel.mutateAsync({
+              workspaceId,
+              name,
+            });
+            return channel;
+          },
+          [workspaceId, createChannel],
+        ),
+        joinChannel: useCallback(
+          async (channelId: string) => {
+            await joinChannel.mutateAsync({ channelId });
+            const channel = unjoinedChannels.find((c) => c.id === channelId);
+            if (!channel) {
+              throw new Error('Channel not found');
             }
-            throw error;
-          }
-        }, [deleteChannelMutation, joinedChannels, unjoinedChannels]),
+            return channel;
+          },
+          [joinChannel, unjoinedChannels],
+        ),
+        deleteChannel: useCallback(
+          async (channelId: string) => {
+            // Optimistically remove the channel from the lists
+            const channel = joinedChannels.find((c) => c.id === channelId);
+            if (channel) {
+              setJoinedChannels((prev) =>
+                prev.filter((c) => c.id !== channelId),
+              );
+            } else {
+              setUnjoinedChannels((prev) =>
+                prev.filter((c) => c.id !== channelId),
+              );
+            }
+
+            try {
+              await deleteChannelMutation.mutateAsync({ channelId });
+            } catch (error) {
+              // If the deletion fails, revert the optimistic update
+              if (channel) {
+                setJoinedChannels((prev) => [...prev, channel]);
+              } else {
+                const unjoinedChannel = unjoinedChannels.find(
+                  (c) => c.id === channelId,
+                );
+                if (unjoinedChannel) {
+                  setUnjoinedChannels((prev) => [...prev, unjoinedChannel]);
+                }
+              }
+              throw error;
+            }
+          },
+          [deleteChannelMutation, joinedChannels, unjoinedChannels],
+        ),
         refetchWorkspace: useCallback(async () => {
           await refetchWorkspace();
         }, [refetchWorkspace]),

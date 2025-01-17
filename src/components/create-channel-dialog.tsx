@@ -1,5 +1,4 @@
 import { useWorkspace } from '@/contexts/workspace-context';
-import { api } from '@/trpc/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Channel } from '@prisma/client';
 import { Loader2Icon } from 'lucide-react';
