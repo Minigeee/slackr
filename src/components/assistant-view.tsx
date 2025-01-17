@@ -1,5 +1,6 @@
 'use client';
 
+import { useWorkspace } from '@/contexts/workspace-context';
 import { cn } from '@/lib/utils';
 import { api } from '@/trpc/react';
 import { EVENTS, getStreamChannelName, pusherClient } from '@/utils/pusher';
@@ -113,15 +114,24 @@ function parseSlashCommand(
   };
 }
 
+/** Hold conversation state in memory to avoid reseting on mount */
+const _convCache: Record<string, Conversation[]> = {};
+
 export default function AssistantView() {
+  const { workspace } = useWorkspace();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const [conversations, setConversations] = useState<Conversation[]>([
-    { id: '1', messages: [] },
-  ]);
+  const [conversations, setConversations] = useState<Conversation[]>(
+    _convCache[workspace?.id ?? ''] || [{ id: '1', messages: [] }],
+  );
   const [activeTab, setActiveTab] = useState('1');
   const [input, setInput] = useState('');
   const [convId, setConvId] = useState(1);
+
+  // Cache conversation state in memory
+  useEffect(() => {
+    _convCache[workspace?.id ?? ''] = conversations;
+  }, [conversations]);
 
   const cleanupPusherSubscription = useCallback((streamId: string) => {
     const channelName = getStreamChannelName(streamId);
