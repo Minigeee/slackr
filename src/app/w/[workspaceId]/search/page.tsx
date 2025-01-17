@@ -69,6 +69,7 @@ export default function SearchPage() {
       enabled: !!selectedMessage,
     },
   );
+
   const reversedContextMessages = useMemo(() => {
     return contextMessages?.slice().reverse();
   }, [contextMessages]);
@@ -102,114 +103,157 @@ export default function SearchPage() {
   // Get full selected message object
   const selected = useMemo(() => {
     if (!selectedMessage) return null;
+
+    // If we have search results, try to find the message there first
     const message = sortedMessages.find(
       (message: MessageWithUser) => message.id === selectedMessage,
     );
-    const channel = workspace.joinedChannels.find(
-      (channel: Channel) => channel.id === message?.channelId,
-    );
-    if (!message || !channel) return null;
-    return {
-      message,
-      channel,
-    };
-  }, [selectedMessage, sortedMessages, workspace.joinedChannels]);
+
+    // If we found the message in search results, use that
+    if (message) {
+      const channel = workspace.joinedChannels.find(
+        (channel: Channel) => channel.id === message.channelId,
+      );
+      if (!channel) return null;
+      return { message, channel };
+    }
+
+    // If we have context messages but no search results (coming from a watch match),
+    // use the first message from context
+    if (contextMessages?.length) {
+      const contextMessage = contextMessages.find(
+        (m) => m.id === selectedMessage,
+      );
+      if (!contextMessage) return null;
+
+      const channel = workspace.joinedChannels.find(
+        (channel: Channel) => channel.id === contextMessage.channelId,
+      );
+      if (!channel) return null;
+
+      return {
+        message: {
+          ...contextMessage,
+          rank: 0,
+        } as MessageWithUser,
+        channel,
+      };
+    }
+
+    return null;
+  }, [
+    selectedMessage,
+    sortedMessages,
+    contextMessages,
+    workspace.joinedChannels,
+  ]);
 
   return (
     <div className='flex h-full'>
-      <div className='flex flex-1 flex-col overflow-hidden'>
-        <div className='flex-shrink-0 border-b p-4'>
-          <div className='flex items-center justify-between'>
-            <h1 className='flex items-center gap-2 text-xl font-semibold'>
-              <Search className='h-5 w-5' />
-              Search results for &quot;{query}&quot;
-            </h1>
-            <Select
-              value={sort}
-              onValueChange={(value: SortOption) => setSort(value)}
-            >
-              <SelectTrigger className='w-[180px]'>
-                <SelectValue placeholder='Sort by...' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='relevance'>Most relevant</SelectItem>
-                <SelectItem value='newest'>Newest first</SelectItem>
-                <SelectItem value='oldest'>Oldest first</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {searchResults?.items && (
-            <p className='text-sm text-muted-foreground'>
-              Found {searchResults.items.length} results
-            </p>
-          )}
-        </div>
-
-        <div className='flex-1 overflow-y-auto p-4'>
-          <div className='space-y-4'>
-            {isLoading && (
-              <div className='flex h-40 items-center justify-center'>
-                <Loader2 className='h-6 w-6 animate-spin text-primary' />
-              </div>
+      {query && (
+        <div className='flex flex-1 flex-col overflow-hidden'>
+          <div className='flex-shrink-0 border-b p-4'>
+            <div className='flex items-center justify-between'>
+              <h1 className='flex items-center gap-2 text-xl font-semibold'>
+                <Search className='h-5 w-5' />
+                {`Search results for "${query}"`}
+              </h1>
+              {query && (
+                <Select
+                  value={sort}
+                  onValueChange={(value: SortOption) => setSort(value)}
+                >
+                  <SelectTrigger className='w-[180px]'>
+                    <SelectValue placeholder='Sort by...' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='relevance'>Most relevant</SelectItem>
+                    <SelectItem value='newest'>Newest first</SelectItem>
+                    <SelectItem value='oldest'>Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            {searchResults?.items && query && (
+              <p className='text-sm text-muted-foreground'>
+                Found {searchResults.items.length} results
+              </p>
             )}
-            {sortedMessages.map((message: MessageWithUser) => (
-              <button
-                key={message.id}
-                onClick={() => handleSelectMessage(message.id)}
-                className={cn(
-                  'w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent',
-                  selectedMessage === message.id && 'bg-accent',
-                )}
-              >
-                <div className='mb-1 flex items-center gap-2'>
-                  <span className='font-medium'>
-                    {message.user?.firstName} {message.user?.lastName}
-                  </span>
-                  <span className='text-xs text-muted-foreground'>
-                    {new Date(message.createdAt).toLocaleDateString()}
-                  </span>
-                  <span className='text-xs text-muted-foreground'>
-                    in{' '}
-                    {message.channel?.type === 'dm'
-                      ? 'Direct Message'
-                      : `#${message.channel?.name}`}
-                  </span>
+          </div>
+
+          <div className='flex-1 overflow-y-auto p-4'>
+            <div className='space-y-4'>
+              {isLoading && (
+                <div className='flex h-40 items-center justify-center'>
+                  <Loader2 className='h-6 w-6 animate-spin text-primary' />
                 </div>
-                <div
-                  className='text-sm text-muted-foreground'
-                  dangerouslySetInnerHTML={{
-                    __html: message.content.replace(
-                      new RegExp(query, 'gi'),
-                      (match: string) =>
-                        `<mark class="bg-yellow-200 dark:bg-yellow-800">${match}</mark>`,
-                    ),
-                  }}
-                />
-              </button>
-            ))}
+              )}
+              {sortedMessages.map((message: MessageWithUser) => (
+                <button
+                  key={message.id}
+                  onClick={() => handleSelectMessage(message.id)}
+                  className={cn(
+                    'w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent',
+                    selectedMessage === message.id && 'bg-accent',
+                  )}
+                >
+                  <div className='mb-1 flex items-center gap-2'>
+                    <span className='font-medium'>
+                      {message.user?.firstName} {message.user?.lastName}
+                    </span>
+                    <span className='text-xs text-muted-foreground'>
+                      {new Date(message.createdAt).toLocaleDateString()}
+                    </span>
+                    <span className='text-xs text-muted-foreground'>
+                      in{' '}
+                      {message.channel?.type === 'dm'
+                        ? 'Direct Message'
+                        : `#${message.channel?.name}`}
+                    </span>
+                  </div>
+                  <div
+                    className='text-sm text-muted-foreground'
+                    dangerouslySetInnerHTML={{
+                      __html: message.content.replace(
+                        new RegExp(query, 'gi'),
+                        (match: string) =>
+                          `<mark class="bg-yellow-200 dark:bg-yellow-800">${match}</mark>`,
+                      ),
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {selected && reversedContextMessages && (
         <ChannelProvider
           channel={selected.channel}
           initialMessages={reversedContextMessages}
         >
-          <div className='flex h-full w-[400px] flex-col border-l xl:w-[500px]'>
+          <div
+            className={cn(
+              'flex h-full w-[400px] flex-col border-l xl:w-[500px]',
+              !query && 'w-full xl:w-full',
+            )}
+          >
             <div className='flex h-12 items-center justify-between border-b px-4'>
               <h3 className='font-semibold'>
                 {selected.channel.type === 'dm'
                   ? 'Direct Message'
                   : `#${selected.channel.name}`}
               </h3>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => handleSelectMessage(null)}
-              >
-                <X className='h-4 w-4' />
-              </Button>
+              {query && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => handleSelectMessage(null)}
+                >
+                  <X className='h-4 w-4' />
+                </Button>
+              )}
             </div>
             <ScrollArea className='flex-1 overflow-hidden'>
               {!reversedContextMessages ? (

@@ -119,3 +119,18 @@ model Attachment {
 
     @@index([messageId])
 }
+
+model WatchPrompt {
+    id          String    @id @default(cuid())
+    userId      String    // Clerk user ID
+    prompt      String    @db.Text
+    embedding   Float[]   // Vector embedding of the prompt
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+    isActive    Boolean   @default(true)
+    lookbackHours Int     @default(24)    // How many hours back to look for matches
+    minRelevanceScore Float @default(0.7)  // Minimum similarity score to consider a match
+
+    @@unique([userId, prompt])
+    @@index([userId])
+}

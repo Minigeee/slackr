@@ -5,6 +5,7 @@ import { messageRouter } from './routers/message';
 import { searchRouter } from './routers/search';
 import { workspaceRouter } from './routers/workspace';
 import { chatRouter } from './routers/chat';
+import { watchRouter } from './routers/watch';
 
 /**
  * This is the primary router for your server.
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   attachment: attachmentRouter,
   search: searchRouter,
   chat: chatRouter,
+  watch: watchRouter,
 });
 
 // Export caller creator

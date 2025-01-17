@@ -164,7 +164,7 @@ export const messageRouter = createTRPCRouter({
             workspaceName: channel.workspace.name,
             userId: ctx.auth.userId,
             userName: `${sender.firstName} ${sender.lastName}`.trim(),
-            createdAt: message.createdAt.toISOString(),
+            createdAt: Math.round(message.createdAt.getTime() / 1000),
             isThread: Boolean(message.threadId || message.parentId),
             isDm: channel.type === 'dm',
           });
@@ -241,7 +241,7 @@ export const messageRouter = createTRPCRouter({
             workspaceName: message.channel.workspace.name,
             userId: ctx.auth.userId,
             userName: `${user.firstName} ${user.lastName}`.trim(),
-            createdAt: updatedMessage.createdAt.toISOString(),
+            createdAt: Math.round(updatedMessage.createdAt.getTime() / 1000),
             isThread: Boolean(message.threadId || message.parentId),
             isDm: message.channel.type === 'dm',
           });
@@ -322,7 +322,7 @@ export const messageRouter = createTRPCRouter({
               workspaceName: message.channel.workspace.name,
               userId: message.userId,
               userName: `${user.firstName} ${user.lastName}`.trim(),
-              createdAt: message.createdAt.toISOString(),
+              createdAt: Math.round(message.createdAt.getTime() / 1000),
               isThread: true,
               isDm: message.channel.type === 'dm',
             });

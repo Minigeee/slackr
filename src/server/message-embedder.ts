@@ -5,7 +5,7 @@ import { db } from './db';
 import { getEmbeddings } from './embeddings';
 import { index } from './pinecone';
 
-const MIN_TOKENS = 15; // Only embed messages longer than this, unless they have mentions
+const MIN_TOKENS = 5; // Only embed messages longer than this, unless they have mentions
 const MAX_THREAD_CHUNK_TOKENS = 1000; // Maximum tokens per thread chunk
 
 // Rough token count estimation - can be refined based on your needs
@@ -33,14 +33,18 @@ type MessageMetadata = {
   workspaceName: string;
   userId: string;
   userName: string;
-  createdAt: string;
+  createdAt: number;
   threadId?: string;
   parentId?: string;
   isThread: boolean;
   isDm: boolean;
 };
 
-function formatMessageText(userName: string, channelName: string, message: Message): string {
+function formatMessageText(
+  userName: string,
+  channelName: string,
+  message: Message,
+): string {
   return `Message from ${userName} at ${message.createdAt.toISOString()} in #${channelName}: ${htmlToMarkdown(message.content)}`;
 }
 
@@ -84,14 +88,17 @@ export async function embedThread(
 
   for (const message of formattedMessages) {
     const messageTokens = estimateTokens(message);
-    
+
     // If adding this message would exceed the chunk limit, start a new chunk
-    if (currentChunkTokens + messageTokens > MAX_THREAD_CHUNK_TOKENS && currentChunk.length > 0) {
+    if (
+      currentChunkTokens + messageTokens > MAX_THREAD_CHUNK_TOKENS &&
+      currentChunk.length > 0
+    ) {
       chunks.push(currentChunk.join('\n\n'));
       currentChunk = [];
       currentChunkTokens = 0;
     }
-    
+
     currentChunk.push(message);
     currentChunkTokens += messageTokens;
   }
@@ -102,29 +109,31 @@ export async function embedThread(
   }
 
   // Generate embeddings and store each chunk
-  await Promise.all(chunks.map(async (chunk, i) => {
-    const embeddings = await getEmbeddings([chunk]);
-    if (!embeddings[0]?.values) {
-      throw new Error('Failed to generate embedding for thread chunk');
-    }
+  await Promise.all(
+    chunks.map(async (chunk, i) => {
+      const embeddings = await getEmbeddings([chunk]);
+      if (!embeddings[0]?.values) {
+        throw new Error('Failed to generate embedding for thread chunk');
+      }
 
-    // Store in Pinecone with thread metadata and chunk info
-    await index.upsert([
-      {
-        id: chunks.length === 1 ? threadId : `${threadId}_chunk_${i}`,
-        values: embeddings[0].values,
-        metadata: {
-          messageId: threadId,
-          content: chunk,
-          ...metadata,
-          isThread: true,
-          isChunk: chunks.length > 1,
-          chunkIndex: i,
-          totalChunks: chunks.length,
+      // Store in Pinecone with thread metadata and chunk info
+      await index.upsert([
+        {
+          id: chunks.length === 1 ? threadId : `${threadId}_chunk_${i}`,
+          values: embeddings[0].values,
+          metadata: {
+            messageId: threadId,
+            content: chunk,
+            ...metadata,
+            isThread: true,
+            isChunk: chunks.length > 1,
+            chunkIndex: i,
+            totalChunks: chunks.length,
+          },
         },
-      },
-    ]);
-  }));
+      ]);
+    }),
+  );
 }
 
 export async function embedMessage(
@@ -146,30 +155,12 @@ export async function embedMessage(
     return; // Skip embedding for short messages without mentions
   }
 
-  // Get previous message for context
-  const previousMessage = await db.message.findFirst({
-    where: {
-      channelId: message.channelId,
-      createdAt: { lt: message.createdAt },
-      threadId: null,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  let text = formatMessageText(metadata.userName, metadata.channelName, message);
-
-  // Format text with previous message context if it exists
-  if (previousMessage) {
-    const client = await clerkClient();
-    const prevSender = await client.users.getUser(previousMessage?.userId);
-
-    const prevUserName =
-      previousMessage.userId === metadata.userId
-        ? metadata.userName
-        : getUserName(prevSender);
-    const prevText = formatMessageText(prevUserName, metadata.channelName, previousMessage);
-    text = `${prevText}\n\n${text}`;
-  }
+  // Format message text
+  const text = formatMessageText(
+    metadata.userName,
+    metadata.channelName,
+    message,
+  );
 
   // Generate and store embedding
   const embeddings = await getEmbeddings([text]);

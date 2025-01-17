@@ -6,6 +6,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import WatchView from '@/components/watch/watch-view';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { setCookie } from 'cookies-next';
 import { throttle } from 'lodash';
@@ -43,7 +45,18 @@ export default function Main({
       <ResizablePanel defaultSize={defaultSizes[1]}>{children}</ResizablePanel>
       <ResizableHandle />
       <ResizablePanel defaultSize={defaultSizes[2]}>
-        <AssistantView />
+        <Tabs defaultValue='assistant' className='h-full'>
+          <TabsList className='w-full justify-start'>
+            <TabsTrigger value='assistant'>Assistant</TabsTrigger>
+            <TabsTrigger value='watch'>Watch List</TabsTrigger>
+          </TabsList>
+          <TabsContent value='assistant' className='h-[calc(100%-45px)]'>
+            <AssistantView />
+          </TabsContent>
+          <TabsContent value='watch' className='h-[calc(100%-45px)]'>
+            <WatchView />
+          </TabsContent>
+        </Tabs>
       </ResizablePanel>
     </ResizablePanelGroup>
   );
